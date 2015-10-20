@@ -1,0 +1,58 @@
+package test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import java.awt.geom.Line2D;
+import java.awt.geom.Point2D;
+
+import org.junit.Test;
+
+import core.Geometry;
+
+/**
+ * Unit testing for Geometry class.
+ * 
+ * @author Madyan Al-Jazaeri
+ */
+public class GeometryTest {
+
+	/**
+	 * Get intersection point from
+	 * {@link geometry.Geometry#intersection(java.awt.geom.Line2D, java.awt.geom.Line2D)} method.
+	 */
+	@Test
+	public void testIntersectionSimple() {
+		Line2D l1 = new Line2D.Double(0.0, 0.0, 5.0, 5.0);
+		Line2D l2 = new Line2D.Double(0.0, 0.0, -5.0, 5.0);
+		Point2D expected = new Point2D.Double(0.0, 0.0);
+		Point2D actual = Geometry.intersection(l1, l2);
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual);
+	}
+
+	/**
+	 * Get null from
+	 * {@link geometry.Geometry#intersection(java.awt.geom.Line2D, java.awt.geom.Line2D)} method for
+	 * lines that does not intersect.
+	 */
+	@Test
+	public void testIntersectionNull() {
+		Line2D l1 = new Line2D.Double(0.0, 0.0, 5.0, 0.0);
+		Line2D l2 = new Line2D.Double(0.0, 5.0, 5.0, 5.0);
+		Point2D actual = Geometry.intersection(l1, l2);
+		assertNull("Expected null instead of " + actual, actual);
+	}
+
+	/**
+	 * Get null from
+	 * {@link geometry.Geometry#intersection(java.awt.geom.Line2D, java.awt.geom.Line2D)} method if
+	 * given the same line.
+	 */
+	@Test
+	public void testIntersectionSameLine() {
+		Line2D l1 = new Line2D.Double(0.0, 0.0, 5.0, 5.0);
+		Point2D actual = Geometry.intersection(l1, l1);
+		assertNull("Expected null instead of " + actual, actual);
+	}
+
+}

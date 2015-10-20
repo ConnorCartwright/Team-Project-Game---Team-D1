@@ -1,0 +1,16 @@
+package screen;
+
+import java.io.Serializable;
+
+import server.PartialCharacterData;
+
+public class ClientPlayer implements Serializable {
+    public int id;
+    public int team;
+    public String name;
+    public boolean active;
+    public int type;
+    public int kills;
+    public int deaths;
+    public PartialCharacterData character;
+}

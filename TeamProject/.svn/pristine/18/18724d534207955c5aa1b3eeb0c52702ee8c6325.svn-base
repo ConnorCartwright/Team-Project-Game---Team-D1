@@ -1,0 +1,185 @@
+package character;
+
+import network.GameEvent.FootStepEvent;
+import core.Arena;
+import core.Tile;
+import core.World;
+
+public class AbstractCharacter {
+    public static final float DEFAULT_NOISE = 30;
+    private double x = 0; // x position of the character
+    private double y = 0; // y position of the character
+    private double dx = 0; // delta x, left = -speed, right = speed
+    private double dy = 0; // delta y, upwards = - speed, down = speed
+    private int viewRange; // the length of the character class' line of sight
+    private int viewAngle; // the angle of the character class' line of sight
+    private double direction; // direction the character is facing in radiants
+    private int radius; // character radius
+    private double noise = 0; // character current noise
+    private double noiseFactor; // the level of noise that the character makes, standard = 1
+    private double speed; // how fast the character can move
+    private final double initialHP;
+    private double healthPoints; // the number of health points the character class has
+    
+    public AbstractCharacter(double healthPoints, double speed, int radius,
+            double noise, int viewRange, int viewAngle) {
+        this.healthPoints = healthPoints;
+        this.initialHP = healthPoints;
+        this.speed = speed;
+        this.radius = radius;
+        this.noiseFactor = noise;
+        this.viewAngle = viewAngle;
+        this.viewRange = viewRange;
+    }
+
+    public void update(World world) {
+        updateCoordinate(world);
+        updateNoise(world);
+    }
+    
+    /**
+     * Update the coordinate of a character and check for collision
+     */
+    protected void updateCoordinate(World world) {
+        if (dx==0 && dy==0)
+            return;
+        Arena arena = world.getArena();
+
+        double newX = x + dx;
+        double newY = y + dy;
+        // boundBox.setLocation((int)(newX-r),(int)(newY-r));
+        // check each corner of box if walkable
+
+        int tileX1 = (int) ((Math.round(newX) - radius) / Tile.tileSize);
+        int tileY1 = (getIntY() - radius) / Tile.tileSize;
+        int tileX2 = (int) ((Math.round(newX) + radius) / Tile.tileSize);
+        int tileY2 = (getIntY() + radius) / Tile.tileSize;
+
+        boolean isTile1Walkable = arena.get(tileX1, tileY1).isWalkable();
+        boolean isTile2Walkable = arena.get(tileX2, tileY1).isWalkable();
+        boolean isTile3Walkable = arena.get(tileX1, tileY2).isWalkable();
+        boolean isTile4Walkable = arena.get(tileX2, tileY2).isWalkable();
+
+        if (isTile1Walkable && isTile2Walkable && isTile3Walkable
+                && isTile4Walkable) {
+            x = newX;
+        } else {
+            dx = 0;
+        }
+
+        int tileX3 = (getIntX() - radius) / Tile.tileSize;
+        int tileY3 = (int) ((Math.round(newY) - radius) / Tile.tileSize);
+        int tileX4 = (getIntX() + radius) / Tile.tileSize;
+        int tileY4 = (int) ((Math.round(newY) + radius) / Tile.tileSize);
+
+        boolean isTile5Walkable = arena.get(tileX3, tileY3).isWalkable();
+        boolean isTile6Walkable = arena.get(tileX4, tileY3).isWalkable();
+        boolean isTile7Walkable = arena.get(tileX3, tileY4).isWalkable();
+        boolean isTile8Walkable = arena.get(tileX4, tileY4).isWalkable();
+
+        if (isTile5Walkable && isTile6Walkable && isTile7Walkable && isTile8Walkable) {
+            y = newY;
+        } else {
+            dy = 0;
+        }
+    }
+    
+    protected void updateNoise(World world) {
+        double inc = -0.75;
+        if (dx!=0 || dy!=0)
+            inc = Math.sqrt(dx*dx + dy*dy)/speed;
+                    
+        noise = Math.max(0,noise+inc);
+        if (noise>30) {
+            world.getEventListener().onEventReceived(new FootStepEvent(getIntX(),getIntY(),(float)(noiseFactor*inc)));
+            noise -= 30;
+        }
+    }
+
+    public double getDirection() {
+        return direction;
+    }
+    
+    public void setDirection(double dir) {
+        direction = dir;
+    }
+    
+    public void setViewRange(int viewRange) {
+        this.viewRange = viewRange;
+    }
+    
+    public void setViewAngle(int viewAngle) {
+        this.viewAngle = viewAngle;
+    }
+    
+    public int getViewRange() {
+        return viewRange;
+    }
+
+    public int getViewAngle() {
+        return viewAngle;
+    }
+    public double getSpeed() {
+        return speed;
+    }
+    
+    public void setSpeed(double speed) {
+        this.speed = speed;
+    }
+    
+    public int getRadius() {
+        return radius;
+    }
+    
+    public int getIntX() {
+        return (int) Math.round(x);
+    }
+    
+    public double getX() {
+        return x;
+    }
+
+    public int getIntY() {
+        return (int) Math.round(y);
+    }
+    
+    public double getY() {
+        return y;
+    }
+
+    public void setX(int x) {
+        this.x = x;
+    }
+
+    public void setY(int y) {
+        this.y = y;
+    }
+    
+    public double getDx() {
+        return dx;
+    }
+    
+    public double getDy() {
+        return dy;
+    }
+    
+    protected void setDx(double dx){
+        this.dx = dx;
+    }
+    
+    protected void setDy(double dy) {
+        this.dy = dy;
+    }
+    
+    public double getHealthPoints() {
+        return healthPoints;
+    }
+    
+    public void setHealthPoints(double healthPoints) {
+        this.healthPoints = healthPoints;
+    }
+    
+    public void resetStats () {
+        healthPoints = initialHP;
+    }
+}

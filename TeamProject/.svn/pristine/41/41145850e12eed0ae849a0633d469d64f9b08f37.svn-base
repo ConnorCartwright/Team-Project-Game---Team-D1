@@ -1,0 +1,32 @@
+package weapon;
+
+/**
+ * The <code>SMG</code> class defines how a <code>SMG</code> will behave, e.g. how fast the projectiles
+ * fly, what the magazine size is, etc. The <code>SMG</code> is a <code>Primary Weapon</code>.
+ * 
+ * @see PrimaryWeapon
+ * @author Team D1
+ * @author Connor Cartwright
+ *
+ */
+public class SMG extends PrimaryWeapon {
+    public static final int weaponId = 4;
+	private static final double accuracy = 76; // defines the set accuracy of this weapon
+	private static final double damage = 17.3; // defines the set damage of this weapon
+	private static final int cooldown = 150; // defines the set time in ms between shots for this weapon
+	private static final int range = 600; // defines the set range of this weapon
+	private static final int numProjectiles = 1; // defines the number of projectiles fired on each shot for this weapon
+	private static final double projectileSpeed = 18; // defines the projectile speed of this weapon
+	private static final int reloadTime = 600; // defines the reload time in ms of this weapon
+	private static final int magSize = 30; // defines the magazine size of this weapon
+	private static final int maxAmmo = 120; // defines the maximum ammo that can be held for this weapon
+	
+	/**
+	 * Creating a new <code>SMG</code> using the set fields defined above.
+	 */
+	public SMG() {
+	    super(weaponId,accuracy, damage, cooldown, range, numProjectiles,
+                projectileSpeed, reloadTime, magSize, maxAmmo);
+	}
+
+}

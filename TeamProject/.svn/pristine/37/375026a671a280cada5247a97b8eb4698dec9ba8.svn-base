@@ -1,0 +1,10 @@
+package server;
+
+import java.io.Serializable;
+
+public class ProjectileData implements Serializable {
+	public int x;
+	public int y;
+	public int dx;
+	public int dy;
+}

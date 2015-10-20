@@ -1,0 +1,207 @@
+package core;
+
+import gui.ClientPlayer;
+
+import java.awt.Color;
+import java.awt.Image;
+import java.awt.Point;
+import java.io.FileInputStream;
+import java.util.List;
+import java.util.Random;
+
+import javax.imageio.ImageIO;
+
+/**
+ * This class will generate power ups.
+ * 
+ * @author Madyan Al-Jazaeri
+ * @author Morgan Rees
+ */
+public class PowerUps {
+	
+	// Power Up Types
+	public static final int HEALTH_KIT       = 0;
+	public static final int COOLDOWN_REDUCER = 1;
+	public static final int DAMAGE_BOOSTER   = 2;
+	
+	public static final int NUM_OF_TYPES = 3; // number of tyoes
+	public static final Color[] COLORS = {
+		new Color(217, 0, 29),
+		new Color(254, 200, 14),
+		new Color(56, 55, 200)
+	}; // type colors
+	public static final int[] PERIODS = {
+		0,
+		10,
+		10
+	}; // time period in second for power up to stay active
+	public static final int REGENERATE_PERIOD = 30;
+	
+	public static final int ICON_SIZE = 20; // icon size
+	public static final int TILE_OFFSET = (Tile.tileSize - ICON_SIZE) / 2; // icon offset from tile
+	public static final int MIN_DISTANCE = 2; // minimum distance between power ups and players
+
+	/**
+	 * @param arena game arena
+	 * @param players player list
+	 * @return array of power ups
+	 */
+	public static PowerUp[] generatePowerUps(Arena arena, List<ClientPlayer> players) {
+        Image[] icons = initializeIcons();
+        
+		int amount = calaculateAmount(arena.getWidth(), arena.getHeight());
+		PowerUp[] powerUps = new PowerUp[amount];
+		
+		for (int i = 0; i < amount; i++) {
+			Point coord = getValidCoord(i, powerUps, arena, players);
+			int x = coord.x;
+			int y = coord.y;
+			int type = getValidType();
+			powerUps[i] = new PowerUp(x, y, type, icons[type]);
+		}
+		
+		return powerUps;
+	}
+	
+	/**
+	 * @return image array of type icons
+	 */
+	private static Image[] initializeIcons() {
+		Image[] icons = new Image[NUM_OF_TYPES];
+		
+		try {
+        	for (int i = 0; i < NUM_OF_TYPES; i++) {
+        		String filename = "resource/powerup/" + i + ".png";
+                icons[i] = ImageIO.read(new FileInputStream(filename));
+			}
+        } catch (Exception e) {
+            System.out.println("Error while loading powerup icons.");
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+            System.exit(-1);
+        }
+		
+		return icons;
+	}
+	
+	/**
+	 * @param width width of arena
+	 * @param height height of arena
+	 * @return number of power ups
+	 */
+	private static int calaculateAmount(int width, int height) {
+		return (width * height) / 100;
+	}
+
+	/**
+	 * @param powerUps power ups array
+	 * @param arena game arena
+	 * @param players player list
+	 * @return coordinates
+	 */
+	public static Point getValidCoord(PowerUp[] powerUps, Arena arena, List<ClientPlayer> players) {
+		int x, y;
+		
+		do {
+			Random random = new Random();
+			x = random.nextInt(arena.getWidth());
+			y = random.nextInt(arena.getHeight());
+		} while (!isValidCoord(powerUps, arena, players, x, y));
+		
+		return new Point(x, y);
+	}
+	
+	/**
+	 * @param index power up index in array
+	 * @param powerUps power ups array
+	 * @param arena game arena
+	 * @param players player list
+	 * @return coordinates
+	 */
+	private static Point getValidCoord(int index, PowerUp[] powerUps, Arena arena, List<ClientPlayer> players) {
+		int x, y;
+		
+		do {
+			Random random = new Random();
+			x = random.nextInt(arena.getWidth());
+			y = random.nextInt(arena.getHeight());
+		} while (!isValidCoord(index, powerUps, arena, players, x, y));
+		
+		return new Point(x, y);
+	}
+	
+	/**
+	 * @param powerUps power ups array
+	 * @param arena game arena
+	 * @param players player list
+	 * @return coordinate is valid or not
+	 */
+	private static boolean isValidCoord(PowerUp[] powerUps, Arena arena, List<ClientPlayer> players, int x, int y) {
+		if (!arena.get(x, y).isWalkable()) {
+			return false;
+		}
+		
+		for (int i = 0; i < powerUps.length; i++) {
+			int deltaX = x - powerUps[i].getX();
+			int deltaY = y - powerUps[i].getY();
+			double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+			if (distance < MIN_DISTANCE) {
+				return false;
+			}
+		}
+		
+		for (ClientPlayer player : players) {
+			int deltaX = x - player.character.x;
+			int deltaY = y - player.character.y;
+			double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+			if (distance < MIN_DISTANCE) {
+				return false;
+			}
+		}
+		
+		return true;
+	}
+
+	/**
+	 * @param index power up index in array
+	 * @param powerUps power ups array
+	 * @param arena game arena
+	 * @param players player list
+	 * @return coordinate is valid or not
+	 */
+	private static boolean isValidCoord(int index, PowerUp[] powerUps, Arena arena, List<ClientPlayer> players, int x, int y) {
+		if (!arena.get(x, y).isWalkable()) {
+			return false;
+		}
+		
+		for (int i = 0; i < index; i++) {
+			int deltaX = x - powerUps[i].getX();
+			int deltaY = y - powerUps[i].getY();
+			double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+			if (distance < MIN_DISTANCE) {
+				return false;
+			}
+		}
+		
+		for (ClientPlayer player : players) {
+			int deltaX = x - player.character.x;
+			int deltaY = y - player.character.y;
+			double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+			if (distance < MIN_DISTANCE) {
+				return false;
+			}
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * @return type
+	 */
+	private static int getValidType() {
+		Random random = new Random();
+		int type = random.nextInt(NUM_OF_TYPES);
+		return type;
+	}
+
+}

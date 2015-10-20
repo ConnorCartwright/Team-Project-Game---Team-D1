@@ -1,0 +1,159 @@
+package graphics;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+
+import physics.Vector2D;
+ 
+public class ParticleAnimation extends Animation {
+ 
+    private Vector2D loc;
+    private Vector2D vel;
+    private Vector2D acc;
+    private Vector2D size;
+    private Vector2D maxSize;
+    private Vector2D growth;
+    private Color color;
+ 
+    private boolean ultSize = false;
+    private boolean defaultSize = false;
+ 
+    public ParticleAnimation(double x, double y, double direction, double speed, double size, double life, Color c){
+        super((long)life);
+        this.loc = new Vector2D(x,y);
+        double dx = Math.cos(direction) * speed;
+        double dy = -Math.sin(direction) * speed;
+        this.vel = new Vector2D(dx,dy);
+        this.acc = new Vector2D(0,0);
+        this.life = new Vector2D(life,life);
+        this.size = new Vector2D(size,size);
+        this.growth = new Vector2D(0,0);
+        this.maxSize = new Vector2D(Double.MAX_VALUE,Double.MAX_VALUE);
+        this.color = c;
+    }
+ 
+    public boolean update(){
+        if (super.update())
+            return true;
+        vel.add(acc);
+        loc.add(vel);
+        size.add(growth);
+
+        if(defaultSize){
+            if(size.x >= maxSize.x){
+                if(size.y >= maxSize.y)
+                    return true;
+                else
+                    size.x = maxSize.x;
+            }
+            if(size.y >= maxSize.y) 
+                size.y = maxSize.y;
+            if(size.x <= 0)
+                if(size.y <= 0)
+                    return true;
+                else
+                    size.x = 1;
+            if(size.y <= 0)
+                size.y = 1;
+            return false; 
+        }
+ 
+        if(ultSize){ 
+            if(size.x > maxSize.x){
+                size.x = maxSize.x;
+                growth.x *= -1;
+            }
+            if(size.y > maxSize.y){
+                size.y = maxSize.y;
+                growth.y *= -1;
+            }
+            if(size.x <= 0){
+                size.x = 1;
+                growth.x *= -1;
+            }
+            if(size.y <= 0){
+                size.y = 1;
+                growth.y *= -1;
+            }
+        }
+        else{ //We stop growing or shrinking.
+            if(size.x > maxSize.x)
+                size.x = maxSize.x;
+            if(size.y > maxSize.y)
+                size.y = maxSize.y;
+            if(size.x <= 0)
+                size.x = 1;
+            if(size.y <= 0)
+                size.y = 1;
+        }
+        return false;
+    }
+ 
+    public void render(Graphics g){
+        Graphics2D g2d = (Graphics2D) g.create();
+ 
+        g2d.setColor(color);
+        g2d.fillRect((int)(loc.x-(size.x/2)), (int)(loc.y-(size.y/2)), (int)size.x, (int)size.y);
+ 
+        g2d.dispose();
+    }
+ 
+    public void setLoc(double x,  double y){
+        loc.x = x;
+        loc.y = y;
+    }
+ 
+    public void setVel(double x,  double y){
+        vel.x = x;
+        vel.y = y;
+    }
+ 
+    public void setAcc(double x,  double y){
+        acc.x = x;
+        acc.y = y;
+    }
+ 
+    public void setSize(double x,  double y){
+        size.x = x;
+        size.y = y;
+    }
+ 
+    public void setMaxSize(double x,  double y){
+        maxSize.x = x;
+        maxSize.y = y;
+    }
+ 
+    public void setGrowth(double x,  double y){
+        growth.x = x;
+        growth.y = y;
+    }
+ 
+    public void setLife(double num){
+        life.x = num;
+        life.y = num;
+    }
+ 
+    public void setSizeDefault(boolean c){
+        defaultSize = c;
+    }
+ 
+    public void setUltSize(boolean c){
+        defaultSize = false;
+        ultSize = c;
+    }
+    
+    public void setColor(Color c)
+    {
+        color = c;
+    }
+ 
+    public Vector2D getLoc(){
+        return loc;
+    }
+    
+ 
+    public Vector2D getVel(){
+        return vel;
+    }
+ 
+}

@@ -1,0 +1,259 @@
+package screen;
+
+import geometry.Geometry;
+
+import java.awt.Shape;
+import java.awt.geom.Arc2D;
+import java.awt.geom.Area;
+import java.awt.geom.GeneralPath;
+import java.awt.geom.Line2D;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+
+import physics.Arena;
+import physics.Tile;
+import server.FullCharacter;
+
+// TODO optimize the algorithm and drawing
+public class LineOfSight {
+	static int lastX = Integer.MAX_VALUE;
+	static int lastY = Integer.MAX_VALUE;
+
+	static final Node DEAD = new Node();
+	static List<Node> edges;
+	static Rectangle2D bb;
+
+	public static Shape generateLoS(final FullCharacter p, final Arena a) {
+		int ts = Tile.tileSize;
+		int range = p.viewRange / ts;
+		int pX = p.x / ts;
+		int pY = p.y / ts;
+
+		int x1 = Math.max(0, pX - range);
+		int y1 = Math.max(0, pY - range);
+		int x2 = Math.min(a.getWidth() - 1, pX + range);
+		int y2 = Math.min(a.getHeight() - 1, pY + range);
+
+		if (lastX != pX || lastY != pY) {
+			edges = new LinkedList<Node>();
+			bb = new Rectangle2D.Double((x1 - 1) * ts, (y1 - 1) * ts,
+					(x2 - x1 + 3) * ts, (y2 - y1 + 3) * ts);
+			lastX = pX;
+			lastY = pY;
+
+			for (int x = x1; x <= x2; x++) {
+				for (int y = y1; y <= y2; y++) {
+					if (!a.get(x, y).isTransparent()) {
+						// Horizontal Edges
+						// above clientPlayers & below that is an empty tile
+						if (y < pY && a.get(x, y + 1).isTransparent()) {
+							edges.add(new Node(x * ts, (y + 1) * ts, (x + 1) * ts, (y + 1) * ts));
+						}
+
+						// below clientPlayers & above that is an empty tile
+						else if (y > pY && a.get(x, y - 1).isTransparent()) {
+							edges.add(new Node((x + 1) * ts, y * ts, x * ts, y * ts));
+						}
+
+						// vertical edges
+						// to the left of player && to the right of that is an
+						// empty tile
+						if (x < pX && a.get(x + 1, y).isTransparent()) {
+							edges.add(new Node((x + 1) * ts, (y + 1) * ts, (x + 1) * ts, y * ts));
+						}
+
+						// to the right of player && to the left of that is an
+						// empty tile
+						if (x > pX && a.get(x - 1, y).isTransparent()) {
+							edges.add(new Node(x * ts, y * ts, x * ts, (y + 1) * ts));
+						}
+					}
+					// System.out.println("processing edge for tile "+x+","+y);
+				}
+			}
+
+			// add border bound
+			for (int l = 0; l < x2 - x1 + 3; l++) {
+				// top border
+				edges.add(new Node((x1 - 1 + l) * ts, (y1 - 1) * ts, (x1 + l) * ts, (y1 - 1) * ts));
+
+				// bottom border
+				edges.add(new Node((x2 + 2 - l) * ts, (y2 + 2) * ts, (x2 + 1 - l) * ts, (y2 + 2) * ts));
+			}
+
+			// add border bound
+			for (int l = 0; l < y2 - y1 + 3; l++) {
+				// right border
+				edges.add(new Node((x2 + 2) * ts, (y1 - 1 + l) * ts, (x2 + 2) * ts, (y1 + l) * ts));
+
+				// left border
+				edges.add(new Node((x1 - 1) * ts, (y2 + 2 - l) * ts, (x1 - 1) * ts, (y2 + 1 - l) * ts));
+			}
+
+			Collections.sort(edges, new Comparator<Node>() {
+				@Override
+				public int compare(Node arg0, Node arg1) {
+					double d1 = arg0.edge.ptSegDist(p.x, p.y);
+					double d2 = arg1.edge.ptSegDist(p.x, p.y);
+					return (int) (d1 - d2);
+				}
+			});
+		}
+
+		// copying edges
+		List<Node> pedges = new LinkedList<Node>();
+		List<Node> nedges = new LinkedList<Node>();
+
+		for (Node nx : edges) {
+			Node n = new Node(nx.edge.getX1(), nx.edge.getY1(), nx.edge.getX2(), nx.edge.getY2());
+			nedges.add(n);
+		}
+
+		// linking
+		for (Node n1 : nedges) {
+			for (Node n2 : nedges) {
+				if (n1.edge.getP2().equals(n2.edge.getP1())) {
+					n1.next = n2;
+					n2.prev = n1;
+					break;
+				}
+			}
+		}
+
+		// projecting
+		Node start = nedges.get(0);
+		while (!nedges.isEmpty()) {
+			Node n = nedges.remove(0);
+			if (n.next == null) {
+				double vx = n.edge.getX2() - p.x;
+				double vy = n.edge.getY2() - p.y;
+				Point2D infEnd = new Point2D.Double();
+				infEnd.setLocation(n.edge.getP2());
+
+				while (bb.contains(infEnd)) {
+					infEnd.setLocation(infEnd.getX() + vx, infEnd.getY() + vy);
+				}
+				assert ((int) infEnd.getX() != (int) n.edge.getX2()
+						|| (int) infEnd.getY() != (int) n.edge.getY2());
+				
+				// projection
+				Line2D pj = new Line2D.Double(n.edge.getP2(), infEnd);
+				for (Node n2 : nedges) {
+					if (n2 != n) {
+						Point2D intersect = Geometry.intersection(pj, n2.edge);
+						if (intersect != null) {
+							// n2.edge.getP1().setLocation(intersect);
+							n2.edge.setLine(intersect, n2.edge.getP2());
+							Node pjNode = new Node(n.edge.getX2(), n.edge.getY2(),
+									intersect.getX(), intersect.getY());
+
+							n.next = pjNode;
+							pjNode.prev = n;
+
+							pjNode.next = n2;
+							pjNode.isProjection = true;
+
+							if (n2.prev != null) {
+								n2.prev.next = DEAD;
+							}
+
+							n2.prev = pjNode;
+							// nedges.add(newn2);
+							pedges.add(pjNode);
+							break;
+						}
+					}
+				}
+			}
+
+			if (n.prev == null) {
+				double vx = n.edge.getX1() - p.x;
+				double vy = n.edge.getY1() - p.y;
+				Point2D infEnd = new Point2D.Double();
+				infEnd.setLocation(n.edge.getP1());
+
+				while (bb.contains(infEnd)) {
+					infEnd.setLocation(infEnd.getX() + vx, infEnd.getY() + vy);
+				}
+				assert (infEnd.getX() != n.edge.getX2() || infEnd.getY() != n.edge
+						.getY2());
+
+				// projection
+				Line2D pj = new Line2D.Double(infEnd, n.edge.getP1());
+				for (Node n2 : nedges) {
+					if (n2 != n) {
+						Point2D intersect = Geometry.intersection(pj, n2.edge);
+						if (intersect != null) {
+							n2.edge.setLine(n2.edge.getP1(), intersect);
+							Node pjNode = new Node(intersect.getX(),
+									intersect.getY(), n.edge.getX1(),
+									n.edge.getY1());
+							n.prev = pjNode;
+							pjNode.next = n;
+
+							pjNode.prev = n2;
+							pjNode.isProjection = true;
+
+							if (n2.next != null) {
+								n2.next.prev = DEAD;
+							}
+
+							n2.next = pjNode;
+							pedges.add(pjNode);
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		/*
+		 * g.setColor(Color.RED); for (Node n:pedges) {
+		 * g.drawLine((int)n.edge.getX1
+		 * (),(int)n.edge.getY1(),(int)n.edge.getX2(),(int)n.edge.getY2()); }
+		 * g.setColor(Color.BLUE); for (Node n:edges) {
+		 * g.drawLine((int)n.edge.getX1
+		 * (),(int)n.edge.getY1(),(int)n.edge.getX2(),(int)n.edge.getY2()); }
+		 */
+
+		GeneralPath losBoxy = new GeneralPath();
+		Node current = start.next;
+		losBoxy.moveTo(start.edge.getX1(), start.edge.getY1());
+		int i = 0;
+		while (current != start && current != null && i < 1000) {
+			losBoxy.lineTo(current.edge.getX1(), current.edge.getY1());
+			current = current.next;
+			i++;
+		}
+		losBoxy.closePath();
+
+		Area area = new Area(losBoxy);
+		double dir = Math.toDegrees(p.direction);
+		int vr = p.viewRange;
+		area.intersect(new Area(new Arc2D.Double(p.x - vr, p.y - vr,
+				vr * 2, vr * 2, dir - p.viewAngle / 2, p.viewAngle,
+				Arc2D.PIE)));
+		return area;
+		// System.out.println(""+(System.currentTimeMillis()-clock));
+	}
+
+	public static class Node {
+		boolean isProjection = false;
+		Line2D edge;
+
+		Node next;
+		Node prev;
+
+		public Node(double d, double e, double f, double g) {
+			edge = new Line2D.Double(d, e, f, g);
+			this.next = null;
+			this.prev = null;
+		}
+
+		public Node() {}
+	}
+}

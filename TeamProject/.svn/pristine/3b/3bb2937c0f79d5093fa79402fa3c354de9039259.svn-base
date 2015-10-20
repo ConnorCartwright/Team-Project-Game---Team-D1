@@ -1,0 +1,11 @@
+package network;
+
+import java.io.Serializable;
+
+public class PartialCharacterData implements Serializable {
+	public int id;
+	public float hp;
+	public int x;
+	public int y;
+	public int r;
+}

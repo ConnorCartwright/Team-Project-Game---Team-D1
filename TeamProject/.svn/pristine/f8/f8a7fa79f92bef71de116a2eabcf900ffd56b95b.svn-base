@@ -1,0 +1,15 @@
+package game;
+
+/**
+ * The game main.
+ */
+public class Main {
+	/**
+     * 
+     */
+	private static final long serialVersionUID = -4621418445015918806L;
+
+	public static void main(String[] args) {
+		new Game();
+	}
+}

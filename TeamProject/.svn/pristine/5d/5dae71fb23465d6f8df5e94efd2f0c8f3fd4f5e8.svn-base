@@ -1,0 +1,68 @@
+package sound;
+
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class AudioManager implements Runnable {
+    ExecutorService threadPool;
+    ConcurrentLinkedQueue<PlayMessage> pending;
+    HashMap<Integer,Sound> soundMap;
+    
+    private static final String SOUND_DIR = "resource/audio/sounds/";
+    
+    private static final Sound test = new Sound(SOUND_DIR+"test.wav");
+    
+    public AudioManager () {
+        threadPool = Executors.newFixedThreadPool(5);
+        pending = new ConcurrentLinkedQueue<PlayMessage>();
+        soundMap = new HashMap<Integer,Sound>();
+        
+        // TODO initialize soundMap with sound files
+        soundMap.put(0,test);
+    }
+    
+    public void playSound(int id, float volume) {
+        for (PlayMessage pm:pending) {
+            if (pm.id==id) {
+                pm.volume = Math.max(pm.volume,volume);
+                return;
+            }
+        }
+        pending.add(new PlayMessage(id,volume));
+    }
+    
+    public void playMusic(int id) {
+        
+    }
+
+    public void update() {
+        threadPool.execute(this);
+    }
+    
+    private static class PlayMessage
+    {
+        int id;
+        float volume;
+        
+        public PlayMessage(int soundId, float volume) {
+            this.id = soundId;
+            this.volume = volume;
+        }
+    }
+
+    @Override
+    public void run() {
+        for (PlayMessage pm:pending) {
+            SoundPlayer sp = new SoundPlayer(soundMap.get(pm.id),threadPool);
+            sp.play();
+        }
+    }
+    
+    public static void main (String[] args) {
+        AudioManager am = new AudioManager();
+        am.playSound(0, 100);
+        am.update();
+    }
+}

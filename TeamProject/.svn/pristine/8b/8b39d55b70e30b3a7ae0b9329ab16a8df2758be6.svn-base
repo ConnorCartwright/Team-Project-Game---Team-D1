@@ -1,0 +1,70 @@
+package screen;
+
+import game.Game;
+
+import java.awt.Color;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+
+import server.LobbyRequest.LobbyInformationPacket;
+import server.LobbyServer;
+
+public class HostScreen extends AbstractScreen implements ActionListener {
+	private JButton hostButton;
+	private JTextField port;
+    private JTextField name;
+    
+	public HostScreen(Game game) {
+		super(game);
+		this.setLayout(new GridBagLayout());
+		JPanel menuPanel = new JPanel();
+		menuPanel.setLayout(new BoxLayout(menuPanel,BoxLayout.PAGE_AXIS));
+		hostButton = GUIFactory.getStyledFunctionButton("Host");
+		port = GUIFactory.getStyledTextField();
+		port.setText("7777");
+		name = GUIFactory.getStyledTextField();
+        name.setText("Host");
+		menuPanel.add(GUIFactory.getStyledLabel("Name:"));
+		menuPanel.add(name);
+		menuPanel.add(GUIFactory.getStyledLabel("Port:"));
+		menuPanel.add(port);
+		menuPanel.add(hostButton);
+		menuPanel.setOpaque(false);
+		this.add(menuPanel);
+		hostButton.addActionListener(this);
+		this.setBackground(Color.BLACK);
+	}
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		if (e.getSource() == hostButton) {
+			try {
+				int portnumber = Integer.parseInt(port.getText());
+				// create new server
+				LobbyServer lobbyServer = new LobbyServer(portnumber);
+
+				Socket socket = new Socket("localhost", portnumber);
+				new ObjectOutputStream(socket.getOutputStream()).writeObject(name.getText());
+				LobbyInformationPacket lip = (LobbyInformationPacket) new ObjectInputStream(socket.getInputStream()).readObject();
+				game.setScreen(new LobbyScreen(lobbyServer, socket, lip, game));
+			} catch (IOException e1) {
+				System.out.println("Error creating server on port " + port.getText());
+				e1.printStackTrace();
+			} catch (ClassNotFoundException e1) {
+			    System.out.println("Error reading lobby information from server.");
+                e1.printStackTrace();
+			}
+		}
+	}
+
+}

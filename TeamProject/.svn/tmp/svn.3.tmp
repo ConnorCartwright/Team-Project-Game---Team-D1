@@ -1,0 +1,166 @@
+package server;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+
+import screen.ClientPlayer;
+import screen.LobbyScreen;
+import server.LobbyRequest.ChangeCharacterRequest;
+import server.LobbyRequest.LobbyInformationPacket;
+import server.LobbyRequest.StartGameRequest;
+import server.LobbyRequest.SwitchTeamRequest;
+import server.LobbyRequest.ToggleReadyRequest;
+
+public class LobbyServer implements Runnable {
+	private volatile boolean running = true;
+
+	private ServerSocket serverSocket;
+	private List<ServerPlayer> players;
+	private int count = 0;
+	//private String arena = "test40";
+	private String arena = "dust";
+
+	public LobbyServer(int port) throws IOException {
+		serverSocket = new ServerSocket(port);
+		players = new ArrayList<ServerPlayer>(10);
+		
+        // START LISTENING FOR CONNECTIONS
+		new Thread(this).start();
+	}
+
+	public void startGame() throws IOException {
+	    for (ServerPlayer p:players) {
+            if (!p.ready)
+                return;
+        }
+	    running = false;
+	    sendRequest(new StartGameRequest());
+	    new GameServer(players,arena);
+	}
+
+	public boolean isRunning(){
+	    return running;
+	}
+
+	public void sendRequest(LobbyRequest request) {
+		for (ServerPlayer p : players) {
+			try {
+				new ObjectOutputStream(p.socket.getOutputStream()).writeObject(request);
+			} catch (IOException e) {
+				System.out.println("Error sending " + request.getClass() + " to player " + p.id);
+				System.out.println(e.getMessage());
+			}
+		}
+	}
+	
+	@Override
+    public void run() {
+        // Lobby screen, waiting for connections
+        while (running) {
+    		try {
+    			Socket socket = serverSocket.accept();
+                ServerPlayer p = new ServerPlayer();
+                // get their name
+                p.name = (String) new ObjectInputStream(socket.getInputStream()).readObject();
+                p.socket = socket;
+                p.team = 0;
+                p.ready = false;
+                p.type = 0;
+                
+                // generate an ID for a player
+                p.id = count;
+                count++;
+
+                // tell other clients about the newly connected player
+                sendRequest(new LobbyRequest.NewPlayerRequest(p.id,p.name));
+                players.add(p);
+                // send the lobby information back to them
+                new ObjectOutputStream(socket.getOutputStream()).writeObject(generateInformationPacket(p.id));
+                
+                // start listening to requests from them
+                new Thread(new LobbyRequestReceiver(socket)).start();
+                
+    			System.out.println("ClientPlayer at " + socket.getRemoteSocketAddress() + " connected, id = " + p.id);
+    		} catch (IOException | ClassNotFoundException e) {
+    			System.out.println("Exception caught when a client tries to connect.");
+    			System.out.println(e.getMessage());
+    			e.printStackTrace();
+    		}
+        }
+    }
+
+	private class LobbyRequestReceiver implements Runnable {
+	    private Socket socket;
+	    public LobbyRequestReceiver (Socket socket) {
+	        this.socket = socket;
+	    }
+    	@Override
+        public void run() {
+            while (isRunning()) {
+                try {
+                    ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+                    Object message = ois.readObject();
+                    if (message instanceof SwitchTeamRequest) {
+                        SwitchTeamRequest request = ((SwitchTeamRequest)message);
+                        for (ServerPlayer p:players) {
+                            if (p.id == request.playerId) {
+                                p.team = request.desTeam;
+                                break;
+                            }
+                        }
+                        sendRequest(request);
+                    } else if (message instanceof ToggleReadyRequest) {
+                        ToggleReadyRequest request = ((ToggleReadyRequest)message);
+                        for (ServerPlayer p:players) {
+                            if (p.id == request.id) {
+                                p.ready = request.ready;
+                                break;
+                            }
+                        }
+                        sendRequest(request);
+                    } else if (message instanceof ChangeCharacterRequest) {
+                        ChangeCharacterRequest request = ((ChangeCharacterRequest)message);
+                        for (ServerPlayer p:players) {
+                            if (p.id == request.playerId) {
+                                p.type = request.typeId;
+                                break;
+                            }
+                        }
+                        sendRequest(request);
+                    }
+                } catch (IOException | ClassNotFoundException e) {
+                    System.out.println("Error while receiving request from client");
+                    System.out.println(e.getMessage());
+                }
+            }
+        }
+	}
+
+	private LobbyInformationPacket generateInformationPacket (int destinationId) {
+	    LobbyInformationPacket lip = new LobbyInformationPacket();
+	    ClientPlayer[] players = new ClientPlayer[this.players.size()];
+	    for (int i=0;i<players.length;i++) {
+	        ServerPlayer p = this.players.get(i);
+	        ClientPlayer lobbyPlayer = new ClientPlayer();
+	        lobbyPlayer.id = p.id;
+	        lobbyPlayer.name = p.name;
+	        lobbyPlayer.ready = p.ready;
+	        lobbyPlayer.team = p.team;
+	        lobbyPlayer.type = p.type;
+	        players[i] = lobbyPlayer;
+	    }
+	    LobbyRequest.GameConfig config = new LobbyRequest.GameConfig();
+	    config.arena = arena;
+	    lip.id = destinationId;
+	    lip.clientPlayers = players;
+	    lip.gameConfig = config;
+	    return lip;
+	}
+	
+	
+}

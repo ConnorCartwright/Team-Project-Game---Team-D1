@@ -1,0 +1,30 @@
+package weapon;
+
+/**
+ * The <code>Shotgun</code> class defines how a <code>Shotgun</code> will behave, e.g. how many projectiles are
+ * fired per shot, what the magazine size is, etc. The <code>Shotgun</code> is a <code>Primary Weapon</code>.
+ * 
+ * @see PrimaryWeapon
+ * @author Team D1
+ * @author Connor Cartwright
+ *
+ */
+public class Shotgun extends PrimaryWeapon {
+    public static final int weaponId = 3;
+	public static final double accuracy = 70; // defines the set accuracy of this weapon
+	public static final double damage = 30; // defines the set damage of this weapon
+	public static final int cooldown = 1500; // defines the set time in ms between shots for this weapon
+	public static final int range = 700; // defines the set range of this weapon
+	public static final int numProjectiles = 5; // defines the number of projectiles fired on each shot for this weapon
+	public static final double projectileSpeed = 25; // defines the projectile speed of this weapon
+	public static final int reloadTime = 2000; // defines the reload time in ms of this weapon
+	public static final int magSize = 8; // defines the magazine size of this weapon
+	public static final int maxAmmo = 24; // defines the maximum ammo that can be held for this weapon
+	/**
+	 * Creating a new <code>Shotgun</code> using the set fields defined above.
+	 */
+	public Shotgun() {
+		super(weaponId,accuracy, damage, cooldown, range, numProjectiles,
+				projectileSpeed, reloadTime, magSize, maxAmmo);
+	}
+}

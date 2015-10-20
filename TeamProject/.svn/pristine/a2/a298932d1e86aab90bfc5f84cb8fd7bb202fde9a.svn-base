@@ -1,0 +1,13 @@
+package server;
+
+import java.net.Socket;
+
+import character.Character;
+import screen.ClientPlayer;
+import server.GameDataPackets.InputPacket;
+
+public class ServerPlayer extends ClientPlayer {
+    public Socket socket;
+    public Character character;
+    public InputPacket lastInput;
+}

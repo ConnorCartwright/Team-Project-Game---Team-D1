@@ -1,0 +1,164 @@
+package server;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.LinkedList;
+import java.util.List;
+
+import character.CharacterFactory;
+import physics.Arena;
+import physics.World;
+import server.GameDataPackets.InputPacket;
+import server.GameDataPackets.WorldStatePacket;
+import server.GameEvent.*;
+import game.Game;
+
+public class GameServer implements Runnable,GameEventListener {
+    private World world;
+    private boolean tick = true;
+    private boolean playing = true;
+    private boolean scoreChanged = false;
+    private List<ServerPlayer> players;
+    private List<GameEvent> events;
+    
+    public GameServer (List<ServerPlayer> players, String arena) throws FileNotFoundException, IOException {
+        this.players = players;
+        world = new World(new Arena(arena),this);
+        events = new LinkedList<GameEvent>();
+        for (ServerPlayer p : players) {
+            p.character = CharacterFactory.newCharacter(p.id,p.team,p.type);
+            world.addPlayer(p.character);
+            p.socket.setSoTimeout(10);
+        }
+        new Thread(this).start();
+    }
+    
+    @Override
+    public void run() {
+        int count = 0;
+        while (!playing) {
+        }
+        while (playing) {
+            // Receive & process input data from clientPlayers
+            // ... hmm
+            long last = System.currentTimeMillis();
+
+            if (tick) {
+                sendState();
+                receiveInput();
+            }
+            tick = !tick;
+
+            // update the world state
+            world.update();
+
+            long wait = Game.MS_PER_UPDATE - (System.currentTimeMillis() - last);
+            if (wait > 0) {
+                try {
+                    Thread.sleep(wait);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+    private void sendState() {
+        WorldStatePacket wsp = world.generateState();
+        wsp.time = System.currentTimeMillis();
+        if (scoreChanged) {
+            // generate teams' new score
+            int team1score=0;
+            int team2score=0;
+            for (ServerPlayer p:players) {
+                if (p.team==0) {
+                    team2score += p.deaths;
+                } else {
+                    team1score += p.deaths;
+                }
+            }
+            events.add(new ScoreChangedEvent(team1score,team2score));
+            scoreChanged = false;
+        }
+        wsp.events = events;
+
+        // Send world data to clientPlayers
+        for (ServerPlayer p : players) {
+            WorldStatePacket filteredState = World.filter(wsp, p.character);
+            try {
+                ObjectOutputStream out = new ObjectOutputStream(p.socket.getOutputStream());
+                out.writeObject(filteredState);
+            } catch (IOException e) {
+                System.out.println("Exception when trying to send data to player " + p.socket.getRemoteSocketAddress());
+                e.printStackTrace();
+            }
+        }
+        events = new LinkedList<GameEvent>();
+    }
+
+    private void receiveInput() {
+        for (ServerPlayer p : players) {
+            try {
+                // System.out.println("Waiting for input from player "+p.socket.getRemoteSocketAddress());
+                InputStream in = p.socket.getInputStream();
+                //System.out.println("Client data available: " + in.available());
+
+                InputPacket input = null;
+                while (in.available() > 200) {
+                    input = (InputPacket) new ObjectInputStream(in).readObject();
+                }
+
+                if (input != null) {
+                    p.character.processInput(input);
+                    //System.out.println("Client -> LobbyServer delay: " + (System.currentTimeMillis() - input.time));
+                }
+
+                // in.skip(in.available());
+                // if (System.currentTimeMillis()-input.time > 300)
+                // input = (InputPacket)in.readObject();
+
+                // System.out.println("Received input from player "+p.socket.getRemoteSocketAddress());
+                // System.out.println(input);
+            } catch (IOException e) {
+                System.out.println("Client -> LobbyServer timed out!");
+                // e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private ServerPlayer findPlayer(int id) {
+        for (ServerPlayer p:players) {
+            if (p.id == id) {
+                return p;
+            }
+        }
+        return null;
+    }
+    
+    @Override
+    public void onEventReceived(GameEvent event) {
+        if (event instanceof PlayerDieEvent) {
+            PlayerDieEvent e = (PlayerDieEvent) event;
+            ServerPlayer killer = findPlayer(e.killerID);
+            ServerPlayer killed = findPlayer(e.killedID);
+            
+            killed.deaths++;
+            if (killer.team!=killed.team) {
+                killer.kills++;
+            } else { 
+                killer.kills--;
+            }
+            scoreChanged = true;
+            events.add(event);
+        }
+        else {
+            events.add(event);
+        }
+    }
+}

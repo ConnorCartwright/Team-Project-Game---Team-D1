@@ -1,0 +1,91 @@
+package gui;
+
+import java.awt.Color;
+import java.awt.Graphics;
+import java.util.List;
+
+import javax.swing.JComponent;
+
+import core.Arena;
+import core.Tile;
+
+/**
+ * This class will handle the drawing of a minimap.
+ * 
+ * @author Madyan Al-Jazaeri
+ */
+public class Minimap extends JComponent {
+    private static final long serialVersionUID = -1715530638861052738L;
+	
+	private static final int TILE_SIZE   = 3;  // tile size
+	private static final int RADIUS      = 3;  // character radius
+	private static final int OFFSET      = 3; // gui offset factor from top and left
+
+	private static final int REAL_OFFSET = OFFSET * TILE_SIZE;
+	
+	private static final Color BORDER_COLOR          = new Color(159, 245, 159);
+    private static final Color WALKABLE_TILE_COLOR   = new Color(24, 45, 24);
+    private static final Color UNWALKABLE_TILE_COLOR = new Color(52, 72, 52);
+    private static final Color PLAYER_COLOR          = Color.WHITE;
+    private static final Color TEAM_COLOR            = Color.GREEN;
+    private static final Color ENEMY_COLOR           = Color.RED;
+
+	private Arena arena;
+	private ClientPlayer mainPlayer;
+	private List<ClientPlayer> players;
+	
+	public Minimap(Arena arena, int id, List<ClientPlayer> players) {
+		this.arena = arena;
+		this.players = players;
+		this.mainPlayer = Utils.findPlayer(players, id);
+	}
+	
+	protected void paintComponent(Graphics g) {
+	    super.paintComponent(g);
+        // render border
+        g.setColor(BORDER_COLOR);
+        int borderCoord  = REAL_OFFSET - 5;
+        int borderWidth  = arena.getWidth()  * TILE_SIZE + 10;
+        int borderHeight = arena.getHeight() * TILE_SIZE + 10;
+		g.fillRect(borderCoord, borderCoord, borderWidth, borderHeight);
+		
+		// render minimap
+		for (int i = OFFSET; i < arena.getWidth() + OFFSET; i++) {
+			for (int j = OFFSET; j < arena.getHeight() + OFFSET; j++) {
+            	boolean walkable = arena.get(i - OFFSET, j - OFFSET).isWalkable();
+				if (walkable) {
+					g.setColor(WALKABLE_TILE_COLOR);
+				} else {
+					g.setColor(UNWALKABLE_TILE_COLOR);
+				}
+				int x = i * TILE_SIZE;
+				int y = j * TILE_SIZE;
+				g.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+            }
+        }
+		
+		// render teams
+		for (ClientPlayer p : players) {
+		    // at the moment inactive players are not drawn
+		    // can draw them with lighter colours to show
+		    // that their data is old
+		    if (!p.active)
+		        continue;
+			if (p.id != mainPlayer.id) {
+				if (p.team==mainPlayer.team) { // if same team
+					g.setColor(TEAM_COLOR);
+				} else {
+					g.setColor(ENEMY_COLOR);
+				}
+			} else {
+			    g.setColor(PLAYER_COLOR);
+			}
+			
+			int characterX = REAL_OFFSET + (p.character.x * TILE_SIZE / Tile.tileSize) - RADIUS;
+            int characterY = REAL_OFFSET + (p.character.y * TILE_SIZE / Tile.tileSize) - RADIUS;
+            int characterSize = 2 * RADIUS;
+            g.fillOval(characterX, characterY, characterSize, characterSize);
+		}
+	}
+	
+}

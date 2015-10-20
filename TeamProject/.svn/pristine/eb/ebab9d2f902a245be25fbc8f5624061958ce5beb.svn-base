@@ -1,0 +1,443 @@
+//<<<<<<< .mine
+////package player;
+////
+////import java.io.Serializable;
+////
+////import physics.Arena;
+////import physics.Tile;
+////import physics.World;
+////import server.FullCharacter;
+////import server.Packets.InputPacket;
+////
+////// TODO split into smaller classes, otherwise will be too big when extend features
+/////**
+//// * Represent a character in-game.
+//// *
+//// */
+////public class Character implements Serializable {
+////	public final int id;
+////	public final int team;
+////
+////	transient private CharacterType cType;
+////	private int x = 0, y = 0;
+////	private int r;
+////	transient private int cx = 0, cy = 0;
+////	private double direction; // in radiant
+////
+////	transient private int dx = 0, dy = 0;
+////	transient private double speedFactor = 1;
+////	transient private double speed;
+////	private double hp;
+////	transient private Weapon weapon;
+////	private int viewRange;
+////	private int viewAngle;
+////
+////	transient private boolean firing = false;
+////	transient private long lastFire;
+////
+////	public Character(int playerId, int team, CharacterType cType) { // should we add in character takes line of sight and weapon?
+////		this.id = playerId;
+////		this.team = team;
+////		lastFire = System.nanoTime();
+////
+////		this.cType = cType;
+////		r = cType.getCharacterRadius();
+////		setHp(cType.getHealthPoints());
+////		speed = cType.getMovementSpeed();
+////		viewRange = cType.getViewRange();
+////		viewAngle = cType.getViewAngle();
+////		weapon = cType.getWeapon();
+////	}
+////
+////	public void update(World world) {
+////		// update position
+////		// apply collision detection on movement
+////
+////		updateCoordinates(world);
+////
+////		// fire
+////		if (firing) {
+////			fire(world);
+////		}
+////	}
+////
+////	private void updateCoordinates(World world) {
+////		Arena arena = world.getArena();
+////
+////		double newX = x + dx * speedFactor;
+////		double newY = y + dy * speedFactor;
+////		// boundBox.setLocation((int)(newX-r),(int)(newY-r));
+////		// check each corner of box if walkable
+////
+////		int tileX1 = (int) ((newX - r) / Tile.tileSize);
+////		int tileY1 = (y - r) / Tile.tileSize;
+////		int tileX2 = (int) ((newX + r) / Tile.tileSize);
+////		int tileY2 = (y + r) / Tile.tileSize;
+////
+////		boolean isTile1Walkable = arena.get(tileX1, tileY1).isWalkable();
+////		boolean isTile2Walkable = arena.get(tileX2, tileY1).isWalkable();
+////		boolean isTile3Walkable = arena.get(tileX1, tileY2).isWalkable();
+////		boolean isTile4Walkable = arena.get(tileX2, tileY2).isWalkable();
+////
+////		if (isTile1Walkable && isTile2Walkable && isTile3Walkable
+////				&& isTile4Walkable) {
+////			x = (int) newX;
+////		}
+////
+////		int tileX3 = (x - r) / Tile.tileSize;
+////		int tileY3 = (int) ((newY - r) / Tile.tileSize);
+////		int tileX4 = (x + r) / Tile.tileSize;
+////		int tileY4 = (int) ((newY + r) / Tile.tileSize);
+////
+////		boolean isTile5Walkable = arena.get(tileX3, tileY3).isWalkable();
+////		boolean isTile6Walkable = arena.get(tileX4, tileY3).isWalkable();
+////		boolean isTile7Walkable = arena.get(tileX3, tileY4).isWalkable();
+////		boolean isTile8Walkable = arena.get(tileX4, tileY4).isWalkable();
+////
+////		if (isTile5Walkable && isTile6Walkable && isTile7Walkable && isTile8Walkable) {
+////			y = (int) newY;
+////		}
+////	}
+////
+////	private void fire(World world) {
+////		long elapsed = (System.nanoTime() - lastFire) / 1000000;
+////
+////		if (elapsed > weapon.getReloadTime()) {
+////			weapon.fire(world, this, direction);
+////			lastFire = System.nanoTime();
+////		}
+////
+////		firing = false;
+////	}
+////
+////	public boolean isFiring() {
+////		return firing;
+////	}
+////
+////	public void updateCursor(int cx, int cy) {
+////		this.cx = cx;
+////		this.cy = cy;
+////		// update direction
+////		direction = Math.atan2(y - cy, cx - x);
+////	}
+////
+////	public int getX() {
+////		return x;
+////	}
+////
+////	public int getDx() {
+////		return dx;
+////	}
+////
+////	public int getDy() {
+////		return dy;
+////	}
+////
+////	public int getY() {
+////		return y;
+////	}
+////
+////	public double getDirection() {
+////		return direction;
+////	}
+////
+////	public int getViewRange() {
+////		return viewRange;
+////	}
+////
+////	public int getViewAngle() {
+////		return viewAngle;
+////	}
+////
+////	public int getR() {
+////		return r;
+////	}
+////
+////	public CharacterType getCType() {
+////		return cType;
+////	}
+////
+////	public double getHp() {
+////		return hp;
+////	}
+////
+////	public void setHp(double d) {
+////		this.hp = d;
+////	}
+////
+////	public void setX(int x) {
+////		this.x = x;
+////	}
+////
+////	public void setY(int y) {
+////		this.y = y;
+////	}
+////
+////	public void processInput(InputPacket input) {
+////		if (input.fire1) {
+////			firing = true;
+////		}
+////
+////		if (input.down) {
+////			if (!input.top) {
+////				dy = (int) speed;
+////			} else {
+////				dy = 0;
+////			}
+////		} else if (input.top) {
+////			dy = (int) -speed;
+////		} else {
+////			dy = 0;
+////		}
+////
+////		if (input.right) {
+////			if (!input.left) {
+////				dx = (int) speed;
+////			} else {
+////				dx = 0;
+////			}
+////		} else if (input.left) {
+////			dx = (int) -speed;
+////		} else {
+////			dx = 0;
+////		}
+////
+////		speedFactor = input.running ? 1.5 : 1;
+////
+////		updateCursor(input.cx, input.cy);
+////	}
+////
+////	public FullCharacter generate() {
+////		FullCharacter fc = new FullCharacter();
+////		fc.healthPoints = (float) hp;
+////		fc.radius = r;
+////		fc.direction = (float) direction;
+////		fc.viewAngle = viewAngle;
+////		fc.viewRange = viewRange;
+////		fc.x = x;
+////		fc.y = y;
+////		return fc;
+////	}
+////}
+//=======
+//package player;
+//
+//import java.io.Serializable;
+//
+//import physics.Arena;
+//import physics.Tile;
+//import physics.World;
+//import server.FullCharacter;
+//import server.GameDataPackets.InputPacket;
+//
+//// TODO split into smaller classes, otherwise will be too big when extend features
+///**
+// * Represent a character in-game.
+// *
+// */
+//public class Character implements Serializable {
+//	public final int id;
+//	public final int team;
+//
+//	transient private CharacterType cType;
+//	private int x = 0, y = 0;
+//	private int r;
+//	transient private int cx = 0, cy = 0;
+//	private double direction; // in radiant
+//
+//	transient private int dx = 0, dy = 0;
+//	transient private double speedFactor = 1;
+//	transient private double speed;
+//	private double hp;
+//	transient private Weapon weapon;
+//	private int viewRange;
+//	private int viewAngle;
+//
+//	transient private boolean firing = false;
+//	transient private long lastFire;
+//
+//	public Character(int playerId, int team, CharacterType cType) { // should we add in character takes line of sight and weapon?
+//		this.id = playerId;
+//		this.team = team;
+//		lastFire = System.nanoTime();
+//
+//		this.cType = cType;
+//		r = cType.getCharacterRadius();
+//		setHp(cType.getHealthPoints());
+//		speed = cType.getMovementSpeed();
+//		viewRange = cType.getViewRange();
+//		viewAngle = cType.getViewAngle();
+//		weapon = cType.getWeapon();
+//	}
+//
+//	public void update(World world) {
+//		// update position
+//		// apply collision detection on movement
+//
+//		updateCoordinates(world);
+//
+//		// fire
+//		if (firing) {
+//			fire(world);
+//		}
+//	}
+//
+//	private void updateCoordinates(World world) {
+//		Arena arena = world.getArena();
+//
+//		double newX = x + dx * speedFactor;
+//		double newY = y + dy * speedFactor;
+//		// boundBox.setLocation((int)(newX-r),(int)(newY-r));
+//		// check each corner of box if walkable
+//
+//		int tileX1 = (int) ((newX - r) / Tile.tileSize);
+//		int tileY1 = (y - r) / Tile.tileSize;
+//		int tileX2 = (int) ((newX + r) / Tile.tileSize);
+//		int tileY2 = (y + r) / Tile.tileSize;
+//
+//		boolean isTile1Walkable = arena.get(tileX1, tileY1).isWalkable();
+//		boolean isTile2Walkable = arena.get(tileX2, tileY1).isWalkable();
+//		boolean isTile3Walkable = arena.get(tileX1, tileY2).isWalkable();
+//		boolean isTile4Walkable = arena.get(tileX2, tileY2).isWalkable();
+//
+//		if (isTile1Walkable && isTile2Walkable && isTile3Walkable
+//				&& isTile4Walkable) {
+//			x = (int) newX;
+//		}
+//
+//		int tileX3 = (x - r) / Tile.tileSize;
+//		int tileY3 = (int) ((newY - r) / Tile.tileSize);
+//		int tileX4 = (x + r) / Tile.tileSize;
+//		int tileY4 = (int) ((newY + r) / Tile.tileSize);
+//
+//		boolean isTile5Walkable = arena.get(tileX3, tileY3).isWalkable();
+//		boolean isTile6Walkable = arena.get(tileX4, tileY3).isWalkable();
+//		boolean isTile7Walkable = arena.get(tileX3, tileY4).isWalkable();
+//		boolean isTile8Walkable = arena.get(tileX4, tileY4).isWalkable();
+//
+//		if (isTile5Walkable && isTile6Walkable && isTile7Walkable && isTile8Walkable) {
+//			y = (int) newY;
+//		}
+//	}
+//
+//	private void fire(World world) {
+//		long elapsed = (System.nanoTime() - lastFire) / 1000000;
+//
+//		if (elapsed > weapon.getReloadTime()) {
+//			weapon.fire(world, this, direction);
+//			lastFire = System.nanoTime();
+//		}
+//
+//		firing = false;
+//	}
+//
+//	public boolean isFiring() {
+//		return firing;
+//	}
+//
+//	public void updateCursor(int cx, int cy) {
+//		this.cx = cx;
+//		this.cy = cy;
+//		// update direction
+//		direction = Math.atan2(y - cy, cx - x);
+//	}
+//
+//	public int getX() {
+//		return x;
+//	}
+//
+//	public int getDx() {
+//		return dx;
+//	}
+//
+//	public int getDy() {
+//		return dy;
+//	}
+//
+//	public int getY() {
+//		return y;
+//	}
+//
+//	public double getDirection() {
+//		return direction;
+//	}
+//
+//	public int getViewRange() {
+//		return viewRange;
+//	}
+//
+//	public int getViewAngle() {
+//		return viewAngle;
+//	}
+//
+//	public int getR() {
+//		return r;
+//	}
+//
+//	public CharacterType getCType() {
+//		return cType;
+//	}
+//
+//	public double getHp() {
+//		return hp;
+//	}
+//
+//	public void setHp(double d) {
+//		this.hp = d;
+//	}
+//
+//	public void setX(int x) {
+//		this.x = x;
+//	}
+//
+//	public void setY(int y) {
+//		this.y = y;
+//	}
+//
+//	public void processInput(InputPacket input) {
+//		if (input.fire1) {
+//			firing = true;
+//		}
+//
+//		if (input.down) {
+//			if (!input.top) {
+//				dy = (int) speed;
+//			} else {
+//				dy = 0;
+//			}
+//		} else if (input.top) {
+//			dy = (int) -speed;
+//		} else {
+//			dy = 0;
+//		}
+//
+//		if (input.right) {
+//			if (!input.left) {
+//				dx = (int) speed;
+//			} else {
+//				dx = 0;
+//			}
+//		} else if (input.left) {
+//			dx = (int) -speed;
+//		} else {
+//			dx = 0;
+//		}
+//
+//		speedFactor = input.running ? 1.5 : 1;
+//
+//		updateCursor(input.cx, input.cy);
+//	}
+//
+//	public FullCharacter generate() {
+//		FullCharacter fc = new FullCharacter();
+//		fc.hp = (float) hp;
+//		fc.r = r;
+//		fc.direction = (float) direction;
+//		fc.viewAngle = viewAngle;
+//		fc.viewRange = viewRange;
+//		fc.x = x;
+//		fc.y = y;
+//		return fc;
+//	}
+//}
+//>>>>>>> .r39

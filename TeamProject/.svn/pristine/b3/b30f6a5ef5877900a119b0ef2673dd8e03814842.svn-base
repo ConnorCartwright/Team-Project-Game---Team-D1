@@ -1,0 +1,317 @@
+package character;
+
+import java.awt.geom.Area;
+
+import network.GameEvent.FootStepEvent;
+import core.Arena;
+import core.LineOfSight;
+import core.Tile;
+import core.World;
+
+/**
+ * This class will define the base behaviour of every type of Character.
+ * 
+ * @author Connor Cartwright
+ * @author Anh D Pham
+ */
+public class AbstractCharacter {
+    public static final float DEFAULT_NOISE = 30;
+    private double x = 0; // x position of the character
+    private double y = 0; // y position of the character
+    private double dx = 0; // delta x, left = -speed, right = speed
+    private double dy = 0; // delta y, upwards = - speed, down = speed
+    private int viewRange; // the length of the character class' line of sight
+    private int viewAngle; // the angle of the character class' line of sight
+    private double direction; // direction the character is facing in radiants
+    private int radius; // character radius
+    private double noise = 0; // character current noise
+    private double noiseFactor; // the level of noise that the character makes, standard = 1
+    private double speed; // how fast the character can move
+    private final double initialHP;
+    private double healthPoints; // the number of health points the character class has
+    private LineOfSight los = new LineOfSight();
+    
+    /**
+     * Creates a new abstract character.
+     * 
+     * @param healthPoints the health points of the characters
+     * @param speed the speed of the character
+     * @param radius the radius of the character
+     * @param noise the noise the character makes
+     * @param viewRange the range of the characters line of sight
+     * @param viewAngle the angle of the characters line of sight
+     */
+    public AbstractCharacter(double healthPoints, double speed, int radius,
+            double noise, int viewRange, int viewAngle) {
+        this.healthPoints = healthPoints;
+        this.initialHP = healthPoints;
+        this.speed = speed;
+        this.radius = radius;
+        this.noiseFactor = noise;
+        this.viewAngle = viewAngle;
+        this.viewRange = viewRange;
+    }
+
+    public void update(World world) {
+        updateCoordinate(world);
+        updateNoise(world);
+    }
+    
+    /**
+     * Updates the coordinates of the character in a world.
+     * 
+     * @param world the world to update the coordinates in.
+     */
+    protected void updateCoordinate(World world) {
+        if (dx==0 && dy==0)
+            return;
+        Arena arena = world.getArena();
+
+        double newX = x + dx;
+        double newY = y + dy;
+        // boundBox.setLocation((int)(newX-r),(int)(newY-r));
+        // check each corner of box if walkable
+
+        int tileX1 = (int) ((Math.round(newX) - radius) / Tile.tileSize);
+        int tileY1 = (getIntY() - radius) / Tile.tileSize;
+        int tileX2 = (int) ((Math.round(newX) + radius) / Tile.tileSize);
+        int tileY2 = (getIntY() + radius) / Tile.tileSize;
+
+        boolean isTile1Walkable = arena.get(tileX1, tileY1).isWalkable();
+        boolean isTile2Walkable = arena.get(tileX2, tileY1).isWalkable();
+        boolean isTile3Walkable = arena.get(tileX1, tileY2).isWalkable();
+        boolean isTile4Walkable = arena.get(tileX2, tileY2).isWalkable();
+
+        if (isTile1Walkable && isTile2Walkable && isTile3Walkable
+                && isTile4Walkable) {
+            x = newX;
+        } else {
+            dx = 0;
+        }
+
+        int tileX3 = (getIntX() - radius) / Tile.tileSize;
+        int tileY3 = (int) ((Math.round(newY) - radius) / Tile.tileSize);
+        int tileX4 = (getIntX() + radius) / Tile.tileSize;
+        int tileY4 = (int) ((Math.round(newY) + radius) / Tile.tileSize);
+
+        boolean isTile5Walkable = arena.get(tileX3, tileY3).isWalkable();
+        boolean isTile6Walkable = arena.get(tileX4, tileY3).isWalkable();
+        boolean isTile7Walkable = arena.get(tileX3, tileY4).isWalkable();
+        boolean isTile8Walkable = arena.get(tileX4, tileY4).isWalkable();
+
+        if (isTile5Walkable && isTile6Walkable && isTile7Walkable && isTile8Walkable) {
+            y = newY;
+        } else {
+            dy = 0;
+        }
+    }
+    
+    /**
+     * Updates the noise in the world based on the character.
+     * 
+     * @param world the world in which to update the noise.
+     */
+    protected void updateNoise(World world) {
+        double inc = -0.75;
+        if (dx!=0 || dy!=0)
+            inc = Math.sqrt(dx*dx + dy*dy)/speed;
+                    
+        noise = Math.max(0,noise+inc);
+        if (noise>30) {
+            world.getEventListener().onEventReceived(new FootStepEvent(getIntX(),getIntY(),(float)(noiseFactor*inc)));
+            noise -= 30;
+        }
+    }
+
+    /**
+     * Returns the line of sight of the character.
+     * 
+     * @param a the arena in which to get the los.
+     * @return the line of sight area.
+     */
+    public Area getLoS(Arena a) {
+        return los.generateLoS(getIntX(), getIntY(), viewRange, viewAngle, direction, a);
+    }
+    
+    /**
+     * Returns the direction of the character.
+     * @return the direction of the character
+     */
+    public double getDirection() {
+        return direction;
+    }
+    /**
+     * Sets the direction of the character
+     * @param dir the direction of the character
+     */
+    public void setDirection(double dir) {
+        direction = dir;
+    }
+    
+    /**
+     * Sets the view range of the character
+     * @param viewRange the view range of the character
+     */
+    public void setViewRange(int viewRange) {
+        this.viewRange = viewRange;
+    }
+    
+    /**
+     * Sets the view angle of the character
+     * @param viewAngle the view angle of the character
+     */
+    public void setViewAngle(int viewAngle) {
+        this.viewAngle = viewAngle;
+    }
+    
+    /**
+     * Gets the view range of the character
+     * @return the view range of the character
+     */
+    public int getViewRange() {
+        return viewRange;
+    }
+
+    /**
+     * Gets the view angle of the character
+     * @return the view angle of the character
+     */
+    public int getViewAngle() {
+        return viewAngle;
+    }
+    
+    /**
+     * Gets the speed of the character
+     * @return the speed of the character
+     */
+    public double getSpeed() {
+        return speed;
+    }
+    
+    /**
+     * Sets the speed of the character
+     * @param speed the speed of the character
+     */
+    public void setSpeed(double speed) {
+        this.speed = speed;
+    }
+    
+    /**
+     * Gets the radius of the character
+     * @return the radius of the character
+     */
+    public int getRadius() {
+        return radius;
+    }
+    
+    /**
+     * Returns the x coord of the character as an int
+     * @return the x coord of the character as an int
+     */
+    public int getIntX() {
+        return (int) Math.round(x);
+    }
+    
+    /**
+     * Returns the x coord of the character
+     * @return the x coord of the character
+     */
+    public double getX() {
+        return x;
+    }
+
+    /**
+     * Returns the y coord of the character as an int
+     * @return the y coord of the character as an int
+     */
+    public int getIntY() {
+        return (int) Math.round(y);
+    }
+    
+    /**
+     * Returns the y coord of the character
+     * @return the y coord of the character
+     */
+    public double getY() {
+        return y;
+    }
+
+    /**
+     * Sets the x coord of the character
+     * @param x the x coord of the character
+     */
+    public void setX(int x) {
+        this.x = x;
+    }
+    
+    /**
+     * Sets the y coord of the character
+     * @param y the y coord of the character
+     */
+    public void setY(int y) {
+        this.y = y;
+    }
+    
+    /**
+     * Gets the delta x of the character
+     * @return the delta x of the character
+     */
+    public double getDx() {
+        return dx;
+    }
+    
+    /**
+     * Gets the delta y of the character
+     * @return the delta y of the character
+     */
+    public double getDy() {
+        return dy;
+    }
+    
+    /**
+     * Sets the delta x of the character
+     * @param dx the delta x of the character
+     */
+    protected void setDx(double dx){
+        this.dx = dx;
+    }
+    
+    /**
+     * Sets the delta y of the character
+     * @param dy the delta y of the character
+     */
+    protected void setDy(double dy) {
+        this.dy = dy;
+    }
+    
+    /**
+     * Returns the health points of the character
+     * @return the health points of the character
+     */
+    public double getHealthPoints() {
+        return healthPoints;
+    }
+    
+    /**
+     * Sets the health points of the character
+     * @param healthPoints the health points of the character
+     */
+    public void setHealthPoints(double healthPoints) {
+        this.healthPoints = healthPoints;
+    }
+    
+    /**
+     * Reset the HP of the character
+     */
+    public void resetStats () {
+        healthPoints = initialHP;
+    }
+    
+    /**
+     * Increase the noise factor of the character
+     * @param factor the factor to increase noise by
+     */
+    public void increaseNoiseFactor(double factor) {
+        this.noiseFactor *= factor;
+    }
+}

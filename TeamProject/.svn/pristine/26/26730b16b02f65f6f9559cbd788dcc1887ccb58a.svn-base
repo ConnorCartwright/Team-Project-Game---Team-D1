@@ -1,0 +1,130 @@
+package screen;
+
+import java.awt.Color;
+import java.awt.Graphics;
+
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+
+import physics.Arena;
+import server.CCharacter;
+import server.FullCharacter;
+
+/**
+ * This class will handle the drawing of a minimap.
+ * 
+ * @author Madyan Al-Jazaeri
+ */
+public class Minimap extends JComponent {
+	
+	private static final int TILE_SIZE   = 4;  // tile size
+	private static final int RADIUS      = 4;  // character radius
+	private static final int OFFSET      = 10; // screen offset factor from top and left
+	private static final int REAL_OFFSET = OFFSET * TILE_SIZE;
+	
+	private static final Color BORDER_COLOR          = new Color(159, 245, 159);
+    private static final Color WALKABLE_TILE_COLOR   = new Color(24, 45, 24);
+    private static final Color UNWALKABLE_TILE_COLOR = new Color(52, 72, 52);
+    private static final Color PLAYER_COLOR          = new Color(244, 255, 110);
+    private static final Color TEAM_COLOR            = Color.WHITE;
+    private static final Color ENEMY_COLOR           = Color.RED;
+
+	private Arena arena;
+	private int id;
+	private FullCharacter player;
+	private CCharacter[] characters;
+	
+	public static void main(String[] args) {
+	    try {
+			Arena arena = new Arena("mansion");
+			
+			int id = 0;
+			
+			FullCharacter player = new FullCharacter();
+			player.x = 70;
+			player.y = 80;
+			player.radius = 5;
+			
+			CCharacter[] characters = {
+					new CCharacter(),
+					new CCharacter(),
+					new CCharacter()
+			};
+			characters[0].id = id;
+			characters[0].x = player.x;
+			characters[0].y = player.y;
+			characters[1].id = 1;
+			characters[1].x = 30;
+			characters[1].y = 30;
+			characters[2].id = 2;
+			characters[2].x = 120;
+			characters[2].y = 100;
+			
+			Minimap minimap = new Minimap(arena, id, player, characters);
+			
+			JFrame frame = new JFrame();
+			frame.add(minimap);
+			frame.setSize(700, 500);
+			frame.getContentPane().setBackground(Color.BLACK);
+			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			frame.setVisible(true);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public Minimap(Arena arena, int id, FullCharacter player, CCharacter[] characters) {
+		this.arena = arena;
+		this.id = id;
+		this.player = player;
+		this.characters = characters;
+	}
+	
+	protected void paintComponent(Graphics g) {
+	    super.paintComponent(g);
+        // render border
+        g.setColor(BORDER_COLOR);
+        int borderCoord  = REAL_OFFSET - 5;
+        int borderWidth  = arena.getWidth()  * TILE_SIZE + 10;
+        int borderHeight = arena.getHeight() * TILE_SIZE + 10;
+		g.fillRect(borderCoord, borderCoord, borderWidth, borderHeight);
+		
+		// render minimap
+		for (int i = OFFSET; i < arena.getWidth() + OFFSET; i++) {
+			for (int j = OFFSET; j < arena.getHeight() + OFFSET; j++) {
+            	boolean walkable = arena.get(i - OFFSET, j - OFFSET).isWalkable();
+				if (walkable) {
+					g.setColor(WALKABLE_TILE_COLOR);
+				} else {
+					g.setColor(UNWALKABLE_TILE_COLOR);
+				}
+				int x = i * TILE_SIZE;
+				int y = j * TILE_SIZE;
+				g.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+            }
+        }
+		
+		// render player
+		g.setColor(PLAYER_COLOR);
+		int playerX = REAL_OFFSET + player.x - RADIUS;
+		int playerY = REAL_OFFSET + player.y - RADIUS;
+		int playerSize = 2 * RADIUS;
+		g.fillOval(playerX, playerY, playerSize, playerSize);
+		
+		// render teams
+		for (CCharacter character : characters) {
+			if (character.id != id) {
+				if (true) { // if same team
+					g.setColor(TEAM_COLOR);
+				} else {
+					g.setColor(ENEMY_COLOR);
+				}
+				int characterX = REAL_OFFSET + character.x - RADIUS;
+				int characterY = REAL_OFFSET + character.y - RADIUS;
+				int characterSize = 2 * RADIUS;
+				g.fillOval(characterX, characterY, characterSize, characterSize);
+			}
+		}
+	}
+	
+}

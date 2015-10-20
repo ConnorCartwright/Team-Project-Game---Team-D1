@@ -1,0 +1,293 @@
+package core;
+
+import geometry.Geometry;
+import gui.Utils;
+
+import java.awt.Point;
+import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+import network.GameEvent;
+import network.PartialCharacterData;
+import network.ProjectileData;
+import network.GameDataPackets.WorldStatePacket;
+import network.GameEvent.*;
+import character.AbstractCharacter;
+import character.ControlledCharacter;
+import character.Hostage;
+import sound.AudioManager;
+
+/**
+ * The physical world inside a match, which handles everything including characters, projectiles and collision.
+ * @author Anh Pham
+ */
+public class World {
+	Arena arena;
+	List<ControlledCharacter> characters;
+	List<Hostage> hostages;
+	List<Projectile> projectiles;
+	GameEventListener listener;
+
+	// List<Effect> effects;
+
+	/**
+	 * Creates the World which is used in GameScreen to play the actual game
+	 * @param arena The arena used in the game
+	 * @param listener
+	 */
+	public World(Arena arena,GameEventListener listener) {
+		this.arena = arena;
+		this.listener = listener;
+		characters = new ArrayList<ControlledCharacter>();
+		projectiles = new LinkedList<Projectile>();
+		hostages = new LinkedList<Hostage>();
+		Hostage h = new Hostage(0);
+		Point spawn = randomizeSpawnPoint(1);
+        h.setX(spawn.x * Tile.tileSize);
+        h.setY(spawn.y * Tile.tileSize);
+		hostages.add(h);
+	}
+	
+	/**
+	 * Adds a player to the World
+	 * @param p the player to be added
+	 */
+	public void addPlayer(ControlledCharacter p) {
+	    Point spawn = randomizeSpawnPoint(p.team);
+		p.setX(spawn.x * Tile.tileSize);
+		p.setY(spawn.y * Tile.tileSize);
+		characters.add(p);
+	}
+
+	/**
+	 * Get the game event listener, for classes contained in the world
+	 * to submit game events themselves.
+	 * @return The even listener associated with this world.
+	 */
+	public GameEventListener getEventListener() {
+	    return listener;
+	}
+	
+	/**
+	 * Randomize the spawn points of a given team
+	 * @param team the team id of the team that wishes its spawn points randomized
+	 * @return
+	 */
+	private Point randomizeSpawnPoint(int team) {
+	    int spawnIndex = Utils.random().nextInt(arena.getSpawn(team).size());
+        return arena.getSpawn(team).get(spawnIndex);
+	}
+	
+	/**
+	 * Add a projectile to the world
+	 * @param p the projectile to be added
+	 */
+	public void addProjectile(Projectile p) {
+		projectiles.add(p);
+	}
+
+	/**
+	 * Update the world, and all the characters and projectiles in the world. This happens every frame. 
+	 */
+	public void update() {
+	    // update characters
+        for (ControlledCharacter p : characters) {
+            p.update(this);
+        }
+        
+        for (Hostage h : hostages) {
+            h.update(this);
+        }
+        
+        // update projectiles
+        List<Projectile> outOfRange = new LinkedList<Projectile>();
+        for (Projectile p : projectiles) {
+            double newX=p.getX()+p.getDx(),newY=p.getY()+p.getDy();
+            List<Point2D> samples = Geometry.getLineSamples(p.getX(),p.getY(),newX,newY);
+            boolean consumed = false;
+            
+            for (Point2D pt:samples) {
+                // check projectile vs character
+                for (ControlledCharacter ch:characters) {
+                    // HIT
+                    if (ch.id!=p.id && pt.distance(ch.getX(),ch.getY())<ch.getRadius()) {
+                        // decrease character's hp
+                        listener.onEventReceived(new BulletHitPlayerEvent((int)pt.getX(),(int)pt.getY()));
+                        ch.setHealthPoints(ch.getHealthPoints()-p.getDamage());
+                        
+                        // KILL
+                        if (ch.getHealthPoints()<=0) {
+                            listener.onEventReceived(new PlayerDieEvent(p.id,ch.id));
+                            Point spawn = randomizeSpawnPoint(ch.team);
+                            ch.setX(spawn.x * Tile.tileSize);
+                            ch.setY(spawn.y * Tile.tileSize);
+                            ch.resetStats();
+                        }
+                        // consume the projectile
+                        consumed = true;
+                        break;
+                    }
+                }
+                
+                // if alr hit character, done
+                if (consumed)
+                    break;
+                
+                // check projectile vs wall collision
+                int tileX = (int) (pt.getX() / Tile.tileSize);
+                int tileY = (int) (pt.getY() / Tile.tileSize);
+               
+                if (!arena.get(tileX, tileY).isWalkable()) {
+                    listener.onEventReceived(new BulletHitWallEvent((int)pt.getX(),(int)pt.getY()));
+                    consumed = true;
+                    break;
+                }
+            }
+            if (consumed || p.isOutOfRange())
+                outOfRange.add(p);
+            else
+                p.update();
+        }
+        projectiles.removeAll(outOfRange);
+	}
+	
+	/**
+	 * Returns the arena used by the world
+	 * @return the arena used by the world
+	 */
+	public Arena getArena() {
+		return arena;
+	}
+
+	/**
+	 * Generate one snapshot of the world state to send to the clients.
+	 * @return The snapshot containing data about characters and projectiles.
+	 */
+	public WorldStatePacket generateState() {
+		WorldStatePacket wsp = new WorldStatePacket();
+
+		wsp.characters = new LinkedList<PartialCharacterData>();
+		for (ControlledCharacter cc:characters) {
+			PartialCharacterData character = new PartialCharacterData();
+			character.id = cc.id;
+			character.x = cc.getIntX();
+			character.y = cc.getIntY();
+			character.hp = (float) cc.getHealthPoints();
+			character.r = cc.getRadius();
+			wsp.characters.add(character);
+		}
+		
+		wsp.hostages = new LinkedList<PartialCharacterData>();
+		for (Hostage h:hostages) {
+		    PartialCharacterData character = new PartialCharacterData();
+            character.id = -1;
+            character.x = h.getIntX();
+            character.y = h.getIntY();
+            character.hp = (float) h.getHealthPoints();
+            character.r = h.getRadius();
+            wsp.hostages.add(character);
+		}
+		
+		wsp.projectiles = new LinkedList<ProjectileData>();
+		for (Projectile p:projectiles) {
+			ProjectileData projectile = new ProjectileData();
+			projectile.x = (int) p.getX();
+			projectile.y = (int) p.getY();
+			projectile.dx = (int) p.getDx();
+			projectile.dy = (int) p.getDy();
+			wsp.projectiles.add(projectile);
+		}
+
+		return wsp;
+	}
+	
+	/**
+	 * Filter out the data about entities / events that are outside one character's
+	 * vision
+	 * @param globalState The global state of the world to be filtered. 
+	 * @param ch The character that will get the resulting state.
+	 * @return The filtered world state.
+	 */
+	public static WorldStatePacket filter(WorldStatePacket globalState, ControlledCharacter ch) {
+		// create a new copy
+		WorldStatePacket localState = new WorldStatePacket();
+		
+		// copy the characters over if they are in view range
+		// TODO instead of view range, use LoS to check
+		// if they should be visible to the player or not.
+		localState.characters = new LinkedList<PartialCharacterData>();
+		for (PartialCharacterData c:globalState.characters) {
+			if (Point.distance(ch.getX(),ch.getY(),c.x,c.y)<ch.getViewRange()+10)
+				localState.characters.add(c);
+		}
+		
+		localState.hostages = new LinkedList<PartialCharacterData>();
+        for (PartialCharacterData c:globalState.hostages) {
+            if (Point.distance(ch.getX(),ch.getY(),c.x,c.y)<ch.getViewRange()+10)
+                localState.hostages.add(c);
+        }
+        
+		localState.projectiles = new LinkedList<ProjectileData>();
+		for (ProjectileData p:globalState.projectiles) {
+			if (Point.distance(ch.getX(),ch.getY(),p.x,p.y)<ch.getViewRange()+10)
+				localState.projectiles.add(p);
+		}
+		
+		// copy the events over if they should be known by the player
+		// i.e in view / listen range.
+		localState.events = new LinkedList<GameEvent>();
+		for (GameEvent event:globalState.events) {
+			if (event instanceof BulletHitWallEvent) {
+                BulletHitWallEvent e = (BulletHitWallEvent) event;
+                double distance = Point.distance(e.x,e.y,ch.getX(),ch.getY());
+                float volume = Utils.getVolumeAtDistance(AudioManager.BULLETWALLNOISE,distance);
+                if (distance<ch.getViewRange() || volume>=0)
+                	localState.events.add(e);
+            } else if (event instanceof BulletHitPlayerEvent) {
+                BulletHitPlayerEvent e = (BulletHitPlayerEvent) event;
+                double distance = Point.distance(e.x,e.y,ch.getX(),ch.getY());
+                float volume = Utils.getVolumeAtDistance(AudioManager.BULLETHITNOISE,distance);
+                if (distance<ch.getViewRange() || volume>=0)
+                	localState.events.add(e);
+            } else if (event instanceof FootStepEvent) {
+                FootStepEvent e = (FootStepEvent) event;
+                float volume = Utils.getVolumeAtDistance(e.noise,Point.distance(e.x,e.y,ch.getX(),ch.getY()));
+                if (volume>=0) {
+                	localState.events.add(e);
+                }
+            } else {
+            	localState.events.add(event);
+            }
+		}
+		localState.time = globalState.time;
+		localState.player = ch.generate();
+		return localState;
+	}
+	
+	/**
+	 * Get the characters visible to one particular characters.
+	 * Used to give the AIs information about what's around them,
+	 * but only what's visible. Similarly to the filter method actually,
+	 * but this one is more about communicating with the AI while
+	 * filter deals about packets sent to clients (i.e human players).
+	 * Can actually merge them into one.
+	 * @param ch The character that will get the resulting list.
+	 * @return A list of characters in the vision field of the given character.
+	 */
+	public List<AbstractCharacter> generateVisibleCharacters (AbstractCharacter ch) {
+//	    Shape los = LineOfSight.generateLoS(ch.getIntX(),ch.getIntY(),
+//	            ch.getViewRange(),ch.getViewAngle(),ch.getDirection(), arena);
+	    List<AbstractCharacter> list = new LinkedList<AbstractCharacter>();
+	    for (ControlledCharacter p:characters) {
+	        double x0 = p.getX()-p.getRadius();
+	        double y0 = p.getY()-p.getRadius();
+	        double r = p.getRadius();
+	        if (Point.distance(x0, y0, ch.getX(),ch.getY())<ch.getViewRange()) {
+	            list.add(p);
+	        }
+	    }
+	    return list;
+	}
+}

@@ -1,0 +1,36 @@
+package physics;
+
+import java.awt.Image;
+
+public class Tile {
+	public static int tileSize = 32; // default
+
+	final boolean walkable;
+	final boolean transparent;
+	final private Image tileImage;
+	final private Image tileImageDark;
+
+	public Tile(boolean walkable, boolean transparent, Image tileImage,
+			Image tileImageDark) {
+		this.walkable = walkable;
+		this.transparent = transparent;
+		this.tileImage = tileImage;
+		this.tileImageDark = tileImageDark;
+	}
+	
+	public boolean isWalkable() {
+		return walkable;
+	}
+	
+	public boolean isTransparent() {
+		return transparent;
+	}
+
+	public Image getImage() {
+		return tileImage;
+	}
+
+	public Image getImageDark() {
+		return tileImageDark;
+	}
+}

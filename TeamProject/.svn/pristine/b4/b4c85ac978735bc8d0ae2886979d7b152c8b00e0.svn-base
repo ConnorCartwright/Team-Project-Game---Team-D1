@@ -1,0 +1,34 @@
+package network;
+
+import java.io.Serializable;
+import java.util.List;
+
+public class GameDataPackets {
+	public static class InputPacket implements Serializable {
+        private static final long serialVersionUID = -5467864280005368467L;
+        
+		public long time;
+		public int cx;
+		public int cy;
+		public boolean top;
+		public boolean down;
+		public boolean left;
+		public boolean right;
+		public boolean running;
+		public boolean sneaking;
+
+		public boolean fire1;
+		public boolean fire2;
+	}
+	
+	public static class WorldStatePacket implements Serializable {
+        private static final long serialVersionUID = 2388807190734680235L;
+        
+        public long time;
+	    public FullCharacterData player;
+	    public List<PartialCharacterData> characters;
+	    public List<PartialCharacterData> hostages;
+	    public List<ProjectileData> projectiles;
+	    public List<GameEvent> events;
+	}
+}

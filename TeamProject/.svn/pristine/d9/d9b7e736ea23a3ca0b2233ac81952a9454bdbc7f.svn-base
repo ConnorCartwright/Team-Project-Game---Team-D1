@@ -1,0 +1,81 @@
+package gui;
+
+import game.Game;
+
+import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import javax.swing.JButton;
+import javax.swing.JPanel;
+
+public class MainMenuScreen extends AbstractScreen implements ActionListener {
+    private static final long serialVersionUID = 3518230790184422507L;
+    private JPanel menuPanel;
+	private JButton hostButton;
+	private JButton joinButton;
+	private JButton settingsButton;
+	private JButton quitButton;
+
+	public MainMenuScreen(Game game) {
+		super(game);
+	    useDefaultBackground();
+		/*
+		c.gridy=1;
+		c.gridx=10;
+		c.gridheight=2;
+		c.gridwidth=1;
+		*/
+		
+		setSize(game.getWidth(),game.getHeight());
+		menuPanel = new JPanel();
+		menuPanel.setLayout(new GridLayout(4, 1));
+		menuPanel.setMaximumSize(new Dimension(400, 600));
+		menuPanel.setOpaque(false);
+		menuPanel.setLocation(game.getWidth() - menuPanel.getWidth(), 1000);
+
+		this.setLayout(new GridBagLayout());
+		GridBagConstraints c = new GridBagConstraints();
+		c.anchor = GridBagConstraints.LINE_END;
+		this.add(menuPanel, c);
+
+		hostButton = GUIFactory.getStyledFunctionButton("Host");
+		joinButton = GUIFactory.getStyledFunctionButton("Join");
+		settingsButton = GUIFactory.getStyledFunctionButton("Settings");
+		quitButton = GUIFactory.getStyledFunctionButton("Quit");
+		
+		initButton(hostButton);
+		initButton(joinButton);
+		initButton(settingsButton);
+		initButton(quitButton);
+
+	}
+
+	private void initButton(JButton button) {
+		button.addActionListener(this);
+		menuPanel.add(button);
+	}
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		if (e.getSource() == hostButton) {
+			goToPlay();
+		} else if (e.getSource() == joinButton) {
+			goToHelp();
+		} else if (e.getSource() == settingsButton) {
+			
+		}  else if (e.getSource() == quitButton) {
+            System.exit(0);
+        }
+	}
+
+	private void goToPlay() {
+		game.setScreen(new HostScreen(game));
+	}
+
+	private void goToHelp() {
+		game.setScreen(new JoinScreen(game));
+	}
+}

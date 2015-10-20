@@ -1,0 +1,72 @@
+package test;
+
+import java.awt.Image;
+import java.io.FileInputStream;
+
+import javax.imageio.ImageIO;
+
+import org.junit.Before;
+
+import character.CharacterFactory;
+import character.Commando;
+import character.Scout;
+import character.Sniper;
+import character.SpecOps;
+import character.Tank;
+
+/**
+ * Unit testing for the CharacterFactory
+ * 
+ * @author Connor Cartwright
+ *
+ */
+public class CharacterFactoryTest {
+
+    private static Image COMMANDO_RED;
+    private static Image SNIPER_RED;
+    private static Image SPECOPS_RED;
+    private static Image COMMANDO_GREEN;
+    private static Image SCOUT_GREEN;
+    private static Image TANK_GREEN;
+	CharacterFactory charFac;
+
+	@Before
+	public void setUp() throws Exception {
+		charFac = new CharacterFactory();
+        try {
+            COMMANDO_RED = ImageIO.read(new FileInputStream("resource/character/commando_red.png"));
+            SNIPER_RED = ImageIO.read(new FileInputStream("resource/character/sniper_red.png"));
+            SPECOPS_RED = ImageIO.read(new FileInputStream("resource/character/specops_red.png"));
+            
+            COMMANDO_GREEN = ImageIO.read(new FileInputStream("resource/character/commando_green.png"));
+            SCOUT_GREEN = ImageIO.read(new FileInputStream("resource/character/scout_green.png"));
+            TANK_GREEN = ImageIO.read(new FileInputStream("resource/character/tank_green.png"));
+        }
+        catch (Exception e) {
+            System.out.println("Error while loading character images in CharacterFactory Test");
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+            System.exit(-1);
+        }
+	}
+	
+    /**
+     * Get the correct image based on the type and colour (team).
+     * 
+     * @param type used to select the appropriate image based on character type.
+     * @param color used to select the appropriate image based on the characters team.
+     * @return
+     */
+//    public static Image getImage(int type, int color) {
+//        return images[type][color];
+//    }
+	
+	/*
+	 * CLASS WIP CLASS WIP CLASS WIP
+	 */
+	
+	// @Test
+	public void testGetCommandoRedImage() {
+		charFac.getImage(2, 0);
+	}
+}

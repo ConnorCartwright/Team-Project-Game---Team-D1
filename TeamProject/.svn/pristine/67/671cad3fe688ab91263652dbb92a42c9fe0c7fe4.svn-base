@@ -1,0 +1,64 @@
+package test;
+
+import static org.junit.Assert.*;
+import java.awt.image.BufferedImage;
+import java.io.FileInputStream;
+
+import javax.imageio.ImageIO;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import core.Tile;
+
+/**
+ * Unit testing for Tile class.
+ * 
+ * @author Madyan Al-Jazaeri
+ */
+public class TileTest {
+	
+	boolean walkable;
+	boolean transparent;
+	BufferedImage tileImage;
+	Tile tile;
+
+	/**
+	 * @throws java.lang.Exception
+	 */
+	@Before
+	public void setUp() throws Exception {
+		walkable = false;
+		transparent = false;
+		tileImage = ImageIO.read(new FileInputStream("resource/tile/cobblestone.png"));
+		tile = new Tile(walkable, transparent, tileImage);
+	}
+
+	/**
+	 * Test method for {@link core.Tile#isWalkable()}.
+	 */
+	@Test
+	public void testIsWalkable() {
+		boolean expected = walkable;
+		boolean actual = tile.isWalkable();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual);
+	}
+
+	/**
+	 * Test method for {@link core.Tile#isTransparent()}.
+	 */
+	@Test
+	public void testIsTransparent() {
+		boolean expected = transparent;
+		boolean actual = tile.isTransparent();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual);
+	}
+
+	/**
+	 * Test method for {@link core.Tile#getImage()}.
+	 */
+	@Test
+	public void testGetImage() {
+		assertEquals("Expected a different image", tileImage, tile.getImage());
+	}
+}

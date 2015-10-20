@@ -1,0 +1,48 @@
+package test;
+
+import static org.junit.Assert.*;
+import game.Game;
+import gui.AbstractScreen;
+import gui.SplashScreen;
+
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+/**
+ * Unit testing for Game class.
+ * 
+ * @author Madyan Al-Jazaeri
+ */
+public class GameTest {
+
+	Game game;
+
+	/**
+	 * @throws java.lang.Exception
+	 */
+	@Before
+	public void setUp() throws Exception {
+		game = new Game();
+	}
+
+	/**
+	 * Test method for {@link game.Game#setScreen(javax.swing.JComponent)}.
+	 */
+	@Test
+	public void testSetScreen() {
+		AbstractScreen screen = new SplashScreen(game);
+		game.setScreen(screen);
+		assertEquals("Content Pane was not setted up correctly", screen, game.getContentPane());
+		assertEquals("Current Screen was not setted up correctly", screen, game.getCurrentScreen());
+	}
+
+	/**
+	 * Test method for {@link game.Game#setScreen(javax.swing.JComponent)} when null is inputed.
+	 */
+	@Test (expected = IllegalArgumentException.class)
+	public void testSetScreenNull() {
+		game.setScreen(null);
+	}
+
+}

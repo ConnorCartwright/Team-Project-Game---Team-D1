@@ -1,0 +1,115 @@
+package test;
+
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import character.Commando;
+import character.Scout;
+import character.Sniper;
+import character.SpecOps;
+import character.Tank;
+
+/**
+ * Unit testing for the ControlledCharacter Classes
+ * 
+ * Covers all of the 9 classes in the character package.
+ * 
+ * @author Connor Cartwright
+ */
+public class CharacterTest {
+
+	Scout scout;
+	Sniper sniper;
+	Tank tank;
+	Commando commando;
+	SpecOps specops;
+
+	@Before
+	public void setUp() throws Exception {
+		scout = new Scout(0, 0);
+		sniper = new Sniper(1, 0);
+		tank = new Tank(2, 0);
+		commando = new Commando(3, 0);
+		specops = new SpecOps(4, 0);
+	}
+
+	@Test
+	public void testScoutAccessors() {
+		// scout class
+		assertEquals("Scout HP", 70, scout.getHealthPoints(), 0.01);
+		assertEquals("Scout Stamina", 120, scout.getStamina(), 0.01);
+		assertEquals("Scout Speed", 1.8, scout.getSpeed(), 0.01);
+		assertEquals("Scout ViewRange", 350, scout.getViewRange(), 0.01);
+		assertEquals("Scout ViewAngle", 120, scout.getViewAngle(), 0.01);
+		assertEquals("Scout Radius", 8, scout.getRadius(), 0.01);
+	}
+
+	@Test
+	public void testSniperAccessors() {
+		// sniper class
+		assertEquals("Sniper HP", 90, sniper.getHealthPoints(), 0.01);
+		assertEquals("Sniper Stamina", 60, sniper.getStamina(), 0.01);
+		assertEquals("Sniper Speed", 1.3, sniper.getSpeed(), 0.01);
+		assertEquals("Sniper ViewRange", 450, sniper.getViewRange(), 0.01);
+		assertEquals("Sniper ViewAngle", 60, sniper.getViewAngle(), 0.01);
+		assertEquals("Sniper Radius", 9, sniper.getRadius(), 0.01);
+	}
+
+	@Test
+	public void testTankAccessors() {
+		// tank class
+		assertEquals("Tank HP", 120, tank.getHealthPoints(), 0.01);
+		assertEquals("Tank Stamina", 40, tank.getStamina(), 0.01);
+		assertEquals("Tank Speed", 1.2, tank.getSpeed(), 0.01);
+		assertEquals("Tank ViewRange", 320, tank.getViewRange(), 0.01);
+		assertEquals("Tank ViewAngle", 100, tank.getViewAngle(), 0.01);
+		assertEquals("Tank Radius", 10, tank.getRadius(), 0.01);
+	}
+
+	@Test
+	public void testCommandoAccessors() {
+		// commando class
+		assertEquals("Commando HP", 90, commando.getHealthPoints(), 0.01);
+		assertEquals("Commando Stamina", 100, commando.getStamina(), 0.01);
+		assertEquals("Commando Speed", 1.5, commando.getSpeed(), 0.01);
+		assertEquals("Commando ViewRange", 360, commando.getViewRange(), 0.01);
+		assertEquals("Commando ViewAngle", 100, commando.getViewAngle(), 0.01);
+		assertEquals("Commando Radius", 9, commando.getRadius(), 0.01);
+	}
+
+	@Test
+	public void testSpecopsAccessors() {
+		assertEquals("Specops HP", 90, specops.getHealthPoints(), 0.01);
+		assertEquals("Specops Stamina", 60, specops.getStamina(), 0.01);
+		assertEquals("Specops Speed", 1.3, specops.getSpeed(), 0.01);
+		assertEquals("Specops ViewRange", 450, specops.getViewRange(), 0.01);
+		assertEquals("Specops ViewAngle", 60, specops.getViewAngle(), 0.01);
+		assertEquals("Specops Radius", 9, specops.getRadius(), 0.01);
+	}
+
+	@Test
+	public void testMutators() {
+		// as each subclass inherits from the abstract ControlledCharacter class,
+		// it is only necessary to check that the mutator methods work
+		// for a single core ControlledCharacter class.
+
+		scout.setHealthPoints(5);
+		assertEquals("Scout HP", 5.0, scout.getHealthPoints(), 0.01);
+
+		scout.setStamina(55);
+		assertEquals("Scout Stamina", 55, scout.getStamina(), 0.01);
+
+		scout.setSpeed(2.4);
+		assertEquals("Scout Speed", 2.4, scout.getSpeed(), 0.01);
+
+		scout.setViewRange(375);
+		assertEquals("Scout ViewRange", 375, scout.getViewRange(), 0.01);
+
+		scout.setViewAngle(137);
+		assertEquals("Scout ViewAngle", 137, scout.getViewAngle(), 0.01);
+		assertEquals("Scout Radius", 8, scout.getRadius(), 0.01);
+	}
+	
+}

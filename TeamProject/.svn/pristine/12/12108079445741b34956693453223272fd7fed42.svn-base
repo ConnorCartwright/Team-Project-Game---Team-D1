@@ -1,0 +1,185 @@
+package core;
+
+import geometry.Geometry;
+import gui.Utils;
+
+import java.awt.Point;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/**
+ * Used for the logic behind our path finding.
+ * 
+ * @author Anh Pham
+ *
+ */
+public class PathFinder {
+    // OPTIMIZATION: could use a 2d array of booleans to avoid pointer chasing
+    // but then, if the map state changes with time (destructible obstacles, etc.)
+    // have to update it as well
+    private Arena arena;
+    private ExecutorService threadpool;
+    
+    public PathFinder(Arena arena) {
+        this.arena = arena;
+        this.threadpool = Executors.newCachedThreadPool();
+    }
+    
+    public Path findPath(Point source, Point dest) {
+    	if (source==null || dest==null)
+    		return new Path();
+        return findPath(source.x,source.y,dest.x,dest.y);
+    }
+    
+    // At the moment find path is multithreaded - might try doing it on one single thread 
+    public Path findPath(int sx, int sy, int dx, int dy) {
+        Path result = new Path();
+        //threadpool.execute(new PathFindingJob(new Point(sx,sy),new Point(dx,dy),arena,result));
+        new PathFindingJob(new Point(sx,sy),new Point(dx,dy),arena,result).run();
+        return result;
+    }
+    
+    private static class PathFindingJob implements Runnable {
+        private static final byte UNEXPLORED = 0;
+        private static final byte EXPLORING = 1;
+        private static final byte EXPLORED = 2;
+        private Path result;
+        private Point source;
+        private Point dest;
+        private Point pixelDest;
+        private Arena arena;
+        public PathFindingJob(Point source, Point dest, Arena arena, Path result) {
+            this.arena = arena;
+            this.source = new Point(source.x/Tile.tileSize,source.y/Tile.tileSize);;
+            this.pixelDest = dest;
+            this.dest = new Point(pixelDest.x/Tile.tileSize,pixelDest.y/Tile.tileSize);
+            this.result = result;
+        }
+        
+        @Override
+        public void run() {
+            int w = arena.getWidth(),h=arena.getHeight();
+            Point[][] from = new Point[w][h];
+            byte[][] exploreState = new byte[w][h];
+            
+            // OPTIMIZATION: can do without one of those two arrays if out of memory
+            // and calculating the heuristic is cheap enough - memory vs speed
+            //float[][] distFromSrc = new float[w][h];
+            float[][] estTotalDist = new float[w][h];
+            //for (float[] row:estTotalDist)
+            //    Arrays.fill(row,Float.MAX_VALUE);
+            for (byte[] row:exploreState)
+                Arrays.fill(row,UNEXPLORED);
+            
+            List<Point> open = new LinkedList<Point>();
+            open.add(source);
+
+            Point current = null;
+            while (!open.isEmpty()) {
+                // explore the most promising option
+                float min = Float.MAX_VALUE;
+                for (Point p:open) {
+                    if (estTotalDist[p.x][p.y]<min) {
+                        min = estTotalDist[p.x][p.y];
+                        current = p;
+                    }
+                }
+                
+                // if it is the goal, end the search
+                if (current.equals(dest)) {
+                    result.path = genFinalPath(from);
+                    return;
+                }
+                
+                // else
+                open.remove(current);
+                exploreState[current.x][current.y] = EXPLORED;
+                float distCurSrc = estTotalDist[current.x][current.y] - heuristic(current);
+                
+                // generate nearby empty tiles
+                List<Point> nearby = genAdjPositions(current);
+                for (Point p:nearby) {
+                    if (exploreState[p.x][p.y]==EXPLORED)
+                        continue;
+                    float newTotalDist = distCurSrc + Geometry.diagonalDistance(p,current) + heuristic(p);
+                    if (exploreState[p.x][p.y]==UNEXPLORED || newTotalDist<estTotalDist[p.x][p.y]) {
+                        from[p.x][p.y] = current;
+                        estTotalDist[p.x][p.y] = newTotalDist;
+                        if (exploreState[p.x][p.y]==UNEXPLORED) {
+                            open.add(p);
+                            exploreState[p.x][p.y] = EXPLORING;
+                        }
+                    }
+                }
+            }
+        }
+        
+        private float heuristic (Point p) {
+            return Geometry.diagonalDistance(p,dest);
+        }
+        
+        private List<Point> genAdjPositions (Point p) {
+            List<Point> adjPositions = new LinkedList<Point>();
+            Point top = new Point(p.x,p.y-1);
+            Point btm = new Point(p.x,p.y+1);
+            Point left = new Point(p.x-1,p.y);
+            Point right = new Point(p.x+1,p.y);
+            Point topright = new Point(p.x+1,p.y-1);
+            Point topleft = new Point(p.x-1,p.y-1);
+            Point btmright = new Point(p.x+1,p.y+1);
+            Point btmleft = new Point(p.x-1,p.y+1);
+            if (arena.get(top).walkable)    
+                adjPositions.add(top);
+            if (arena.get(btm).walkable)
+                adjPositions.add(btm);
+            if (arena.get(left).walkable)   
+                adjPositions.add(left);
+            if (arena.get(right).walkable)
+                adjPositions.add(right);
+            if (arena.get(top).walkable && arena.get(right).walkable && arena.get(topright).walkable)
+                adjPositions.add(topright);
+            if (arena.get(top).walkable && arena.get(left).walkable && arena.get(topleft).walkable)
+                adjPositions.add(topleft);
+            if (arena.get(btm).walkable && arena.get(right).walkable && arena.get(btmright).walkable)
+                adjPositions.add(btmright);
+            if (arena.get(btm).walkable && arena.get(left).walkable && arena.get(btmleft).walkable)
+                adjPositions.add(btmleft);
+            return adjPositions;
+        }
+        
+        // TODO smoothen the path
+        private List<Point> genFinalPath (Point[][] from){
+            Point current = from[dest.x][dest.y];
+            List<Point> path = new LinkedList<Point>();
+            path.add(pixelDest);
+            while (current!=null && !current.equals(source)) {
+                path.add(0,Utils.tileToPixel(current));
+                current = from[current.x][current.y];
+            }
+            return path;
+        }
+    }
+    
+    public static class Path {
+        public List<Point> path = null;
+    }
+    
+    public static void main(String[] args) {
+        //System.out.println("Diagonal distance 2,2 to 3,4 is "+PathFindingJob.diagonalDistance(new Point(2,2),new Point(3,4)));
+        Path r = new Path();
+        try {
+            PathFindingJob job = new PathFindingJob(new Point(50,50),new Point(1280,1280),new Arena("mansion",false),r);
+            job.run();
+            for (Point p:r.path) {
+                System.out.println(p);
+            }
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+}

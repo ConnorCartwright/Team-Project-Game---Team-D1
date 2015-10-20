@@ -1,0 +1,161 @@
+package core;
+
+import gui.ClientPlayer;
+
+import java.awt.Graphics;
+import java.awt.Point;
+import java.awt.geom.Point2D;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+/**
+ * This class will handle power ups.
+ * 
+ * @author Madyan Al-Jazaeri
+ */
+public class PowerUp {
+
+	private int x;
+	private int y;
+	
+	public static void main(String[] args) throws FileNotFoundException, IOException {
+		Arena arena = new Arena("test40", false);
+		System.out.println(calaculateAmount(arena.getHeight(), arena.getWidth()));
+//		int count = 0;
+//		for (int i = 0; i < arena.getWidth(); i++) {
+//			for (int j = 0; j < arena.getHeight(); j++) {
+//				if (isValidCoord(arena, null, i, j)) {
+//					count++;
+//				}
+//			}
+//		}
+//		System.out.println(count);
+		
+	}
+
+	/**
+	 * @param x the x coordinate to set
+	 * @param y the y coordinate to set
+	 */
+	public PowerUp(int x, int y) {
+		this.x = x;
+		this.y = y;
+	}
+
+	/**
+	 * @return the x coordinate
+	 */
+	public int getX() {
+		return x;
+	}
+
+	/**
+	 * @return the y coordinate
+	 */
+	public int getY() {
+		return y;
+	}
+	
+	/**
+	 * @param x the x coordinate to set
+	 * @param y the y coordinate to set
+	 */
+	public void setCoord(int x, int y) {
+		this.x = x;
+		this.y = y;
+	}
+	
+	/**
+	 * @param g graphics to draw on
+	 */
+	public void render(Graphics g) {
+		g.drawRect(getX() * Tile.tileSize, getY() * Tile.tileSize, 32, 32);
+	}
+	
+	/**
+	 * @param width width of arena
+	 * @param height height of arena
+	 * @return number of power ups
+	 */
+	private static int calaculateAmount(int width, int height) {
+		return (width * height) / 100;
+	}
+
+	/**
+	 * @param arena game arena
+	 * @param players player list
+	 * @param x the x coordinate to check
+	 * @param y the y coordinate to check
+	 * @return coordinate is valid or not
+	 */
+	private static boolean isValidCoord(int index, PowerUp[] powerUps, Arena arena, List<ClientPlayer> players, int x, int y) {
+		if (!arena.get(x, y).isWalkable()) {
+			return false;
+		}
+		
+//		if (arena.get(x, y).hasPowerUp()) {
+//			return false;
+//		}
+		
+		for (int i = 0; i < index; i++) {
+			int deltaX = x - powerUps[i].getX();
+			int deltaY = y - powerUps[i].getY();
+			double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+			if (distance < 2.0) {
+				return false;
+			}
+		}
+		
+		for (ClientPlayer player : players) {
+			int deltaX = x - player.character.x;
+			int deltaY = y - player.character.y;
+			double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+			if (distance < 2.0) {
+				return false;
+			}
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * @param arena game arena
+	 * @param players player list
+	 * @return coordinate
+	 */
+	private static Point getValidCoord(int index, PowerUp[] powerUps, Arena arena, List<ClientPlayer> players) {
+		int x, y;
+		
+		do {
+			Random random = new Random();
+			x = random.nextInt(arena.getWidth());
+			y = random.nextInt(arena.getHeight());
+		} while (!isValidCoord(index, powerUps, arena, players, x, y));
+		
+		return new Point(x, y);
+	}
+	
+	/**
+	 * @param arena game arena
+	 * @param players player list
+	 * @return array of power ups
+	 */
+	public static PowerUp[] generatePowerUps(Arena arena, List<ClientPlayer> players) {
+		int amount = calaculateAmount(arena.getWidth(), arena.getHeight());
+		PowerUp[] powerUps = new PowerUp[amount];
+		
+		for (int i = 0; i < amount; i++) {
+			Point coord = getValidCoord(i, powerUps, arena, players);
+			int x = coord.x;
+			int y = coord.y;
+			powerUps[i] = new PowerUp(x, y);
+//			arena.get(x, y).setHasPowerUp(true);
+		}
+		
+		return powerUps;
+	}
+	
+}

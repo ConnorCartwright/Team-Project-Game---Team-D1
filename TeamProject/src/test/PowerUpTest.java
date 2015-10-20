@@ -1,0 +1,76 @@
+package test;
+
+import static org.junit.Assert.assertEquals;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import character.ControlledCharacter;
+import character.Tank;
+import core.Arena;
+import core.PowerUp;
+import core.PowerUpFactory;
+
+/**
+ * Unit testing for PowerUp class.
+ * 
+ * @author Shobitha Shivakumar
+ */
+public class PowerUpTest {
+
+	PowerUp[] powerUps;
+
+	/**
+	 * @throws java.lang.Exception
+	 */
+	@BeforeClass
+	public static void setUpBeforeClass() throws Exception {
+		PowerUpFactory.initializeIcons();
+	}
+
+	/**
+	 * @throws java.lang.Exception
+	 */
+	@Before
+	public void setUp() throws Exception {
+		Arena arena = new Arena("maze", false);
+		List<ControlledCharacter> characters = new ArrayList<ControlledCharacter>();
+		for (int i = 0; i < 5; i++) {
+			characters.add(new Tank(i, 0));
+		}
+		powerUps = PowerUpFactory.generatePowerUps(arena, characters);
+	}
+
+	/**
+	 * Test method for {@link core.PowerUp#getPickerId()}.
+	 * 
+	 * @throws SecurityException
+	 * @throws NoSuchFieldException
+	 * @throws IllegalAccessException
+	 * @throws IllegalArgumentException
+	 */
+	@Test
+	public void testGetPickerId() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+		Field field = powerUps[0].getClass().getDeclaredField("picker");
+		field.setAccessible(true);
+		@SuppressWarnings("unchecked")
+		ControlledCharacter picker = (ControlledCharacter) field.get(powerUps[0]);
+
+		int expected;
+		if (picker != null) {
+			expected = picker.id;
+		} else {
+			expected = -1;
+		}
+
+		int actual = powerUps[0].getPickerId();
+
+		assertEquals("Expected picker id to be " + expected + " not " + actual, expected, actual);
+	}
+
+}

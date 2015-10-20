@@ -1,0 +1,80 @@
+package sound;
+
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class AudioManager implements Runnable {
+    // min and max gain in decibel
+    public static final float MINVOLUME = -35;
+    public static final float MAXVOLUME = -10;
+    public static final int PISTOL = 0;
+    
+    ExecutorService threadPool;
+    ConcurrentLinkedQueue<PlayMessage> pending;
+    HashMap<Integer,Sound> soundMap;
+    
+    private static final String SOUND_DIR = "resource/audio/sounds/";
+    
+    
+    
+    public AudioManager () {
+        threadPool = Executors.newFixedThreadPool(5);
+        pending = new ConcurrentLinkedQueue<PlayMessage>();
+        soundMap = new HashMap<Integer,Sound>();
+        
+        // TODO initialize soundMap with sound files
+        soundMap.put(PISTOL,new Sound(SOUND_DIR+"gunshot_pistol.wav"));
+    }
+    
+    public void playSound(int id, float volume) {
+        if (volume>0) {
+            // convert from 0-100 scale to decibel gain value
+            volume = (MAXVOLUME-MINVOLUME)*Math.min(100,volume)/100 + MINVOLUME;
+            for (PlayMessage pm:pending) {
+                if (pm.id==id) {
+                    pm.volume = Math.max(pm.volume,volume);
+                    return;
+                }
+            }
+            pending.add(new PlayMessage(id,volume));
+        }
+    }
+    
+    public void playMusic(int id) {
+        
+    }
+
+    public void update() {
+        threadPool.execute(this);
+    }
+    
+    private static class PlayMessage
+    {
+        int id;
+        float volume;
+        
+        public PlayMessage(int soundId, float volume) {
+            this.id = soundId;
+            this.volume = volume;
+        }
+    }
+
+    @Override
+    public void run() {
+        for (PlayMessage pm:pending) {
+            SoundPlayer sp = new SoundPlayer(soundMap.get(pm.id),pm.volume,threadPool);
+            sp.play();
+        }
+        pending.clear();
+    }
+    
+    public static void main (String[] args) {
+        AudioManager am = new AudioManager();
+        Sound test = new Sound(SOUND_DIR+"test.wav");
+        am.soundMap.put(Integer.MAX_VALUE,test);
+        am.playSound(Integer.MAX_VALUE, 100);
+        am.update();
+    }
+}

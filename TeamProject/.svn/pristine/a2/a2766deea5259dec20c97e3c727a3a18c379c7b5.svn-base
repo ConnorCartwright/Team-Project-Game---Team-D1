@@ -1,0 +1,40 @@
+package gui;
+
+import java.awt.Component;
+import java.util.List;
+import java.util.Random;
+
+import core.Tile;
+
+public class Utils {
+	private static Random randomizer = new Random();
+
+	public static void setLocationCenterOf(Component child, Component parent) {
+		int x = parent.getX() + (parent.getWidth() - child.getWidth()) / 2;
+		int y = parent.getY() + (parent.getHeight() - child.getHeight()) / 2;
+		child.setLocation(x, y);
+	}
+
+	public static Random random() {
+		return randomizer;
+	}
+	
+	public static float getVolumeAtDistance(float originalSound, double distance) {
+	    // don't increase the volume pass the original noise volume
+	    // which is based on one-tile distance
+	    distance = Math.max(Tile.tileSize,distance);
+	    
+	    // in real life it's 20*Math.log10 ... , but because we can't simulate
+	    // volume loss when a sound goes through walls, we have to artificially
+	    // increase the volume loss over distance to make up for it
+	    return (float) (originalSound+25*Math.log10(Tile.tileSize/distance));
+	}
+
+    public static ClientPlayer findPlayer(List<ClientPlayer> players, int id) {
+        for (ClientPlayer player:players) {
+            if (player.id == id)
+                return player;
+        }
+        return null;
+    }
+}

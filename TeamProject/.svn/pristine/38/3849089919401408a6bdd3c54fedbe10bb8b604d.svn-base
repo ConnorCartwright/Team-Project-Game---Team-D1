@@ -1,0 +1,82 @@
+package physics;
+
+import java.awt.Color;
+import java.awt.Graphics;
+
+import character.Character;
+
+// TODO too simple at the moment, have to extend to support different abilities.
+/**
+ * Representing a flying projectile.
+ */
+public class Projectile {
+	// Fields
+	transient final public int id;
+
+	private double x;
+	private double y;
+
+	private double dx;
+	private double dy;
+	transient private double damage;
+
+	transient private double speed;
+	transient private double range;
+	transient private double travelled;
+
+	transient private static final Color color1 = Color.RED;
+
+	// Constructor
+	public Projectile(Character source, double damage, double direction, double speed, double range) {
+	    id = source.id;
+		x = source.getX();
+		y = source.getY();
+
+		dx = Math.cos(direction) * speed;
+		dy = -Math.sin(direction) * speed;
+		// this.direction = direction;
+
+		this.damage = damage;
+		this.speed = speed;
+		this.range = range;
+		travelled = 0;
+	}
+
+	public double getDamage() {
+		return damage;
+	}
+
+	public double getX() {
+		return x;
+	}
+
+	public double getY() {
+		return y;
+	}
+
+	public double getDx() {
+		return dx;
+	}
+
+	public double getDy() {
+		return dy;
+	}
+
+	public void update() {
+		if (!isOutOfRange()) {
+			x += dx;
+			y += dy;
+
+			travelled += speed;
+		}
+	}
+
+	public boolean isOutOfRange() {
+		return travelled > range;
+	}
+
+	public void render(Graphics g) {
+		g.setColor(color1);
+		g.drawLine((int) x, (int) y, (int) (x - dx), (int) (y - dy));
+	}
+}

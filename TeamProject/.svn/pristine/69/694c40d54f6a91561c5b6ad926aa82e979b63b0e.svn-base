@@ -1,0 +1,77 @@
+package server;
+
+import java.io.Serializable;
+
+import screen.ClientPlayer;
+import screen.LobbyScreen;
+
+public class LobbyRequest implements Serializable {
+    
+    
+	public static class SwitchTeamRequest extends LobbyRequest {
+		public final int playerId;
+		public final int desTeam;
+
+		public SwitchTeamRequest(int id, int to) {
+			playerId = id;
+			desTeam = to;
+		}
+	}
+
+	public static class ChangeCharacterRequest extends LobbyRequest {
+	    public final int playerId;
+	    public final int typeId;
+	    
+	    public ChangeCharacterRequest (int playerId, int typeId) {
+	        this.playerId = playerId;
+	        this.typeId = typeId;
+	    }
+	}
+	
+	
+	/**
+	 * Every time a client connects, the server sends this packet to it
+	 * to initialize the lobby screen.
+	 */
+	public static class LobbyInformationPacket extends LobbyRequest {
+	    public int id;
+	    public ClientPlayer[] clientPlayers;
+	    public GameConfig gameConfig;
+	}
+	
+	public static class NewPlayerRequest extends LobbyRequest {
+	    public final int id;
+	    public final String name;
+	    public NewPlayerRequest(int id, String name) {
+	        this.id = id;
+	        this.name = name;
+	    }
+	}
+	
+	/**
+	 * 
+	 */
+	public static class GameConfig implements Serializable {
+	    public String arena;
+	    // other information about the game mode
+	}
+	
+	public static class ToggleReadyRequest extends LobbyRequest {
+	    public final int id;
+	    public final boolean ready;
+	    public ToggleReadyRequest (int id, boolean ready) {
+	        this.id = id;
+	        this.ready = ready;
+	    }
+	}
+	
+	public static class StartGameRequest extends LobbyRequest {}
+
+	public static class ChangeArenaRequest extends LobbyRequest {
+		public final String arenaName;
+
+		public ChangeArenaRequest(String arena) {
+			arenaName = arena;
+		}
+	}
+}

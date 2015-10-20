@@ -1,0 +1,19 @@
+package server;
+
+import java.net.Socket;
+
+import character.ControlledCharacter;
+import server.GameDataPackets.InputPacket;
+
+public class ServerPlayer {
+    public int id;
+    public int team;
+    public String name;
+    public boolean active;
+    public int type;
+    public int kills;
+    public int deaths;
+    public Socket socket;
+    public ControlledCharacter character;
+    public InputPacket lastInput;
+}

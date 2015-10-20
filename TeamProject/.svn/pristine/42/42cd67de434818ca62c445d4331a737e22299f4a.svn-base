@@ -1,0 +1,11 @@
+package test;
+
+/**
+ * Unit testing for the CharacterFactory
+ * 
+ * @author Connor Cartwright
+ *
+ */
+public class CharacterFactoryTest {
+
+}

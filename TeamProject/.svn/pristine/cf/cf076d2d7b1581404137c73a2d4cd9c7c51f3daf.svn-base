@@ -1,0 +1,304 @@
+package character;
+import physics.Arena;
+import physics.Tile;
+import physics.World;
+import server.FullCharacter;
+import weapon.*;
+
+/**
+ * The <code>Character</code> class defines the behaviour that all types of Characters must inherit.
+ * Here the Accessor and Mutator methods are located for ease of access elswhere in the code and to 
+ * avoid code duplication. The Character class encompasses how ALL Characters have to behave.
+ * 
+ * A <code>Character</code> also uses a specific set of <code>Weapons</code>.
+ * 
+ * @see Weapon
+ * @author Team D1
+ * @author Connor Cartwright
+ *
+ */
+public abstract class Character {
+	public final int id; // the player's ID
+	
+	public final int team; // the team the player is on
+	
+	private int typeID; // the type of the character, e.g. Sniper
+	
+	private double x = 0; // x position of the character
+	private double y = 0; // y position of the character
+	
+	private int radius; // character radius
+	
+	private int cx = 0; // x position of the crosshairs
+	private int cy = 0; // y position of the crosshairs
+	
+	private double direction; // direction the character is facing in radiants
+	private double dx = 0; // delta x, left = -speed, right = speed
+	private double dy = 0; // delta y, upwards = - speed, down = speed
+	
+	private int viewRange; // the length of the character class' line of sight
+	private int viewAngle; // the angle of the character class' line of sight
+
+	private boolean firing = false; // whether or not the character is firing
+	private long lastFire; // how long was it since the character last fired
+	
+	// The initial fields below is the result of providing parameters by subclassing
+	// (compared to using Type Object pattern) - there's no easy way to access,
+	// say, Scout's max HP (although it is already defined there)
+	// even from inside the Character class. With type object, we can type.getHP().
+	// With subclassing, we can't getLowestLevelClass().MAXHP. So now we have two options:
+	//
+	// + (used below) to save every single initial stat in Character objects instead
+	//   (an already big class) although all scouts will have the same initial stats anyway,
+	//   i.e duplicated fields in all objects. The initial fields also grow along with 
+	//   each field added later.
+	//
+	// + to have abstract accessors to initial fields in Character that
+	//   EVERY subclass has to implement, and then call character.getMaxHealth()
+	//   to achieve polymorphism (duplicated code in all the subclasses).
+	// 
+	// Both solutions make the codebase look poorly written and maintaining & extending
+	// devilishly hard, over the gain of a nice-looking character type hierarchy.
+	//
+	// This could be solved easily by either ditching the character inheritance hierarchy completely
+	// and providing a data table (rows = types, columns = fields) to look up when creating
+	// a new character with a numerical "typeID", hence to access default fields we just need
+	// table[typeID][FIELD]; or storing a Type Object as a field inside Character,
+	// hence to access default fields we just need type.getInitHP().
+	//
+	// Data table & Type Object, both solutions are widely used to provide persistent data
+	// (things that don't change) in games.
+	private final double initialHP;
+	//private final double initialStamina;
+	//private final int initialRadius;
+	//private final double initialSpeed;
+	//private final int initialViewRange;
+	//private final int initialViewAngle;
+	
+	private double healthPoints; // the number of health points the character class has
+	private double stamina; // the stamina amount of the character class
+	private double speedFactor = 1; // used to multiply the characters movement speed
+	private double speed; // how fast the character class can move
+	
+	private PrimaryWeapon primary; // the primary weapon of the character class
+	private SecondaryWeapon secondary; // the secondary weapon of the character class
+
+	
+	protected Character(int id, int typeID, int team, double healthPoints, double stamina, double speed, int viewRange,
+							int viewAngle, int radius, PrimaryWeapon primary, SecondaryWeapon secondary) {
+		this.id = id;
+		this.typeID = typeID;
+		this.team = team;
+		
+		this.initialHP = healthPoints;
+		//this.initialStamina = stamina;
+		//this.initialRadius = radius;
+		//this.initialSpeed = speed;
+		//this.initialViewAngle = viewAngle;
+		//this.initialViewRange = viewRange;
+		
+		this.healthPoints = healthPoints;
+		this.stamina = stamina;
+		this.speed = speed;
+		this.viewRange = viewRange;
+		this.viewAngle = viewAngle;
+		this.radius = radius;
+		this.primary = primary;
+		this.secondary = secondary;
+	}
+	
+	public void update(World world) {
+		// update position
+		// apply collision detection on movement
+
+		updateCoordinates(world);
+
+		// fire
+		if (firing) {
+			fire(world);
+		}
+	}
+
+	public void resetStats() {
+	    //speed = initialSpeed;
+	    healthPoints = initialHP;
+	    //stamina = initialStamina;
+	    //radius = initialRadius;
+	    //viewRange = initialViewRange;
+	    //viewAngle = initialViewAngle;
+	}
+	
+	private void updateCoordinates(World world) {
+		Arena arena = world.getArena();
+
+		double newX = x + dx * speedFactor;
+		double newY = y + dy * speedFactor;
+		// boundBox.setLocation((int)(newX-r),(int)(newY-r));
+		// check each corner of box if walkable
+
+		int tileX1 = (int) ((Math.round(newX) - radius) / Tile.tileSize);
+		int tileY1 = (getIntY() - radius) / Tile.tileSize;
+		int tileX2 = (int) ((Math.round(newX) + radius) / Tile.tileSize);
+		int tileY2 = (getIntY() + radius) / Tile.tileSize;
+
+		boolean isTile1Walkable = arena.get(tileX1, tileY1).isWalkable();
+		boolean isTile2Walkable = arena.get(tileX2, tileY1).isWalkable();
+		boolean isTile3Walkable = arena.get(tileX1, tileY2).isWalkable();
+		boolean isTile4Walkable = arena.get(tileX2, tileY2).isWalkable();
+
+		if (isTile1Walkable && isTile2Walkable && isTile3Walkable
+				&& isTile4Walkable) {
+			x = newX;
+		}
+
+		int tileX3 = (getIntX() - radius) / Tile.tileSize;
+		int tileY3 = (int) ((Math.round(newY) - radius) / Tile.tileSize);
+		int tileX4 = (getIntX() + radius) / Tile.tileSize;
+		int tileY4 = (int) ((Math.round(newY) + radius) / Tile.tileSize);
+
+		boolean isTile5Walkable = arena.get(tileX3, tileY3).isWalkable();
+		boolean isTile6Walkable = arena.get(tileX4, tileY3).isWalkable();
+		boolean isTile7Walkable = arena.get(tileX3, tileY4).isWalkable();
+		boolean isTile8Walkable = arena.get(tileX4, tileY4).isWalkable();
+
+		if (isTile5Walkable && isTile6Walkable && isTile7Walkable && isTile8Walkable) {
+			y = newY;
+		}
+	}
+
+	private void fire(World world) {
+		long elapsed = System.currentTimeMillis() - lastFire;
+
+		if (elapsed > primary.getReloadTime()) {
+			((Weapon) primary).fire(world, this, direction);
+			lastFire = System.currentTimeMillis();
+		}
+
+		firing = false;
+	}
+
+	public boolean isFiring() {
+		return firing;
+	}
+
+	public void updateCursor(int cx, int cy) {
+		this.cx = cx;
+		this.cy = cy;
+		// update direction
+		direction = Math.atan2(y - cy, cx - x);
+	}
+
+	public int getIntX() {
+		return (int) Math.round(x);
+	}
+	
+	public double getX() {
+	    return x;
+	}
+
+	public int getIntY() {
+        return (int) Math.round(y);
+    }
+	
+	public double getY() {
+		return y;
+	}
+
+	public double getDirection() {
+		return direction;
+	}
+
+	public int getRadius() {
+		return radius;
+	}
+	
+	public double getHealthPoints() {
+		return healthPoints;
+	}
+
+	public double getStamina() {
+		return stamina;
+	}
+
+	public double getSpeed() {
+		return speed;
+	}
+
+	public int getViewRange() {
+		return viewRange;
+	}
+
+	public int getViewAngle() {
+		return viewAngle;
+	}
+
+	public PrimaryWeapon getPrimary() {
+		return primary;
+	}
+	
+	public SecondaryWeapon getSecondary() {
+		return secondary;
+	}
+
+	public int getTypeID() {
+		return typeID;
+	}
+	
+	public void setHealthPoints(double healthPoints) {
+		this.healthPoints = healthPoints;
+	}
+
+	public void setX(int x) {
+		this.x = x;
+	}
+
+	public void setY(int y) {
+		this.y = y;
+	}
+
+	public void processInput(server.GameDataPackets.InputPacket input) {
+		if (input.fire1) {
+			firing = true;
+		}
+
+		if (input.down) {
+			if (!input.top) {
+				dy = speed;
+			} else {
+				dy = 0;
+			}
+		} else if (input.top) {
+			dy = -speed;
+		} else {
+			dy = 0;
+		}
+
+		if (input.right) {
+			if (!input.left) {
+				dx = speed;
+			} else {
+				dx = 0;
+			}
+		} else if (input.left) {
+			dx = -speed;
+		} else {
+			dx = 0;
+		}
+
+		speedFactor = input.running ? 1.5 : 1;
+
+		updateCursor(input.cx, input.cy);
+	}
+
+	public FullCharacter generate() {
+		FullCharacter fc = new FullCharacter();
+		fc.healthPoints =  healthPoints;
+		fc.radius = radius;
+		fc.direction = (float) direction;
+		fc.viewAngle = viewAngle;
+		fc.viewRange = viewRange;
+		fc.x = getIntX();
+		fc.y = getIntY();
+		return fc;
+	}
+}

@@ -1,0 +1,75 @@
+package gui;
+
+import java.awt.BorderLayout;
+import java.awt.GridLayout;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+
+public class ChatPanel extends JFrame {
+
+	private JPanel panel;
+	private JTextField text;
+	private JTextArea textarea;
+	private JLabel stat;
+	private boolean typing;
+
+	public ChatPanel() {
+		init();
+	}
+
+	public static void main(String args[]) {
+		JFrame frame = new ChatPanel();
+	}
+
+	private void init() {
+		panel = new JPanel();
+		panel.setLayout(new GridLayout(2, 1));
+		stat = new JLabel();
+		panel.add(stat);
+
+		text = new JTextField();
+		panel.add(text);
+		add(panel, BorderLayout.SOUTH);
+
+		text.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent ke) {
+				stat.setText("Typing..");
+				typing = true;
+
+				if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
+					String current = text.getText();
+					if (current.trim().isEmpty()) {
+						return;
+					}
+					textarea.append(current + "\n");
+					text.setText("");
+					stat.setText("");
+				}
+			}
+
+			@Override
+			public void keyReleased(KeyEvent ke) {
+				typing = false;
+			}
+		});
+
+		textarea = new JTextArea();
+		textarea.setEditable(false);
+
+		JScrollPane scroll = new JScrollPane(textarea);
+		add(scroll);
+
+		setDefaultCloseOperation(EXIT_ON_CLOSE);
+		setSize(400, 400);
+		setVisible(true);
+	}
+
+}

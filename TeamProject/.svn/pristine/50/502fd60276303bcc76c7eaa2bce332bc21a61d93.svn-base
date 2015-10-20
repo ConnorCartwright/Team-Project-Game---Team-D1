@@ -1,0 +1,112 @@
+package core;
+
+import java.awt.Color;
+import java.awt.Graphics;
+
+import character.ControlledCharacter;
+
+/**
+ * Used to represent a projectile.
+ * 
+ * @author Anh Pham
+ * @author Connor Cartwright
+ */
+public class Projectile {
+	
+	transient final public int id;
+
+	private double x;
+	private double y;
+
+	private double dx;
+	private double dy;
+	transient private double damage;
+
+	transient private double speed;
+	transient private double range;
+	transient private double travelled;
+
+	transient private static final Color color1 = Color.RED;
+
+	/**
+	 * Create a projectile to be use in the world
+	 * 
+	 * @param source
+	 *            the source, ie the player, of which the projectile being fired from
+	 * @param damage
+	 *            the damage of the projectile
+	 * @param direction
+	 *            the direction of the projectile
+	 * @param speed
+	 *            the speed of the projectile
+	 * @param range
+	 *            the range of the projectile
+	 */
+	public Projectile(ControlledCharacter source, double damage, double direction, double speed, double range) {
+		id = source.id;
+		x = source.getX();
+		y = source.getY();
+
+		dx = Math.cos(direction) * speed;
+		dy = -Math.sin(direction) * speed;
+		// this.direction = direction;
+
+		this.damage = damage;
+		this.speed = speed;
+		this.range = range;
+		travelled = 0;
+	}
+
+	public double getDamage() {
+		return damage;
+	}
+
+	public double getX() {
+		return x;
+	}
+
+	public double getY() {
+		return y;
+	}
+
+	public double getDx() {
+		return dx;
+	}
+
+	public double getDy() {
+		return dy;
+	}
+
+	/**
+	 * Update the projectile by checking if it is out of range every frame
+	 */
+	public void update() {
+		if (!isOutOfRange()) {
+			x += dx;
+			y += dy;
+
+			travelled += speed;
+		}
+	}
+
+	/**
+	 * Checks if a projectile is out of range
+	 * 
+	 * @return returns true if the projectile is out of range
+	 */
+	public boolean isOutOfRange() {
+		return travelled > range;
+	}
+
+	/**
+	 * Renders the projectile
+	 * 
+	 * @param g
+	 *            the graphic to be used to render the projectile
+	 */
+	public void render(Graphics g) {
+		g.setColor(color1);
+		g.drawLine((int) x, (int) y, (int) (x - dx), (int) (y - dy));
+	}
+	
+}

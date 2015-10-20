@@ -1,0 +1,17 @@
+package network;
+
+import java.io.Serializable;
+
+/**
+ * The data from projectiles.
+ * 
+ * @author Anh D Pham
+ *
+ */
+public class ProjectileData implements Serializable {
+    private static final long serialVersionUID = 4031643912795589086L;
+    public short x;
+	public short y;
+	public byte dx;
+	public byte dy;
+}

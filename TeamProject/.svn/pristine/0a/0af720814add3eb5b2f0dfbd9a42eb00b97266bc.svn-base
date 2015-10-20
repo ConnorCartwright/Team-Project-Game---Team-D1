@@ -1,0 +1,55 @@
+package graphics;
+
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+
+import server.FullCharacter;
+import character.CharacterFactory;
+
+public class Renderer {
+
+    public static void renderMainCharacter (Graphics g,FullCharacter player, int typeId) {
+        // render the character
+        renderCharacter(g,player.x,player.y,player.radius,typeId,true);
+        
+        // render the health bar
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setStroke(new BasicStroke(4));
+        g2d.setColor(new Color(255, 50, 50));
+        int length = (int) (0.2 * player.healthPoints);
+        int topy = player.y - player.radius - 7;
+        g2d.drawLine(player.x - length / 2, topy, player.x + length / 2,topy);
+        
+        // render the reload bar
+        if (player.reloadPercent<1) {
+            topy += 4;
+            g2d.setStroke(new BasicStroke(3));
+            g2d.setColor(Color.WHITE);
+            int x = player.x-player.radius;
+            g2d.drawLine(x, topy,x+(int)(player.radius*2*player.reloadPercent),topy);
+        }
+    }
+    
+    public static void renderCharacter(Graphics g, int x, int y, int r, int typeId, boolean friendly) {
+        Graphics2D g2d = (Graphics2D) g;
+        
+        g2d.setStroke(new BasicStroke(2));
+        g2d.setColor(Color.BLACK);
+        g2d.fillOval(x - r, y - r, 2 * r, 2 * r);
+        int color;
+        if (friendly) {
+            g2d.setColor(Color.GREEN);
+            color = 1;
+        } else {
+            g2d.setColor(Color.RED);
+            color = 0;
+        }
+        g2d.drawOval(x - r, y - r, 2 * r, 2 * r);
+        int sqrt = (int)(r/Math.sqrt(2)-1);
+        g2d.drawImage(CharacterFactory.getImage(typeId,color),x-sqrt,y-sqrt,2*sqrt,2*sqrt,null);
+        g2d.setStroke(new BasicStroke(1));
+    }
+}

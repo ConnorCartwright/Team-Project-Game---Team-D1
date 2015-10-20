@@ -1,0 +1,250 @@
+package core;
+
+import geometry.Geometry;
+import gui.Utils;
+
+import java.awt.Point;
+import java.util.List;
+
+import core.PathFinder.Path;
+import network.GameDataPackets.InputPacket;
+import network.GameDataPackets.WorldStatePacket;
+import network.GameEvent;
+import network.GameEvent.*;
+import network.PartialCharacterData;
+import network.ServerPlayer;
+
+public class AIPlayer extends ServerPlayer {
+    private static enum AIState {EXPLORING_POINT,EXPLORING_RANDOMLY,ATTACKING,RETREATING}
+    private static final float PATH_THRESHOLD = Tile.tileSize/3f;
+    private static final float OUTOFRANGE_THRESHOLD = Tile.tileSize*2f;
+    private static final float COORD_THRESHOLD = Tile.tileSize/10f;
+    private static final double EXPLORE_DISTANCE = Tile.tileSize*15;
+    private static final double RETREAT_DISTANCE = Tile.tileSize*5;
+    private PathFinder pathFinder;
+    
+    private InputPacket input = new InputPacket();
+    private WorldStatePacket wsp;
+    private Path nextPath;
+    private List<Point> curPath;
+    private Point curIntr;
+    private Arena arena;
+    private AIState state = AIState.EXPLORING_RANDOMLY;
+    private World world;
+    
+    /**
+     * Creates a new AI Player on the server
+     * @param id The id of the AI Player
+     * @param team The team of the AI player
+     */
+    public AIPlayer (int id, int team) {
+        super(id,team,"BOT"+id,null);
+    }
+    
+    /**
+     * Initialise the AI Player
+     * @param arena
+     * @param pathFinder
+     */
+    public void init (Arena arena, PathFinder pathFinder) {
+        this.arena = arena;
+        this.pathFinder = pathFinder;
+    }
+    
+    /**
+     * Sets the world of the player
+     * @param world The world of the player
+     */
+    public void initDebug (World world) {
+        this.world = world;
+    }
+    
+    @Override
+    public void sendWorldState (WorldStatePacket wsp) {
+        this.wsp = wsp;
+    }
+    
+    /**
+     * This method can and should block for an (arbitrary) amount of time,
+     * similarly to how reading networked input blocks.
+     */
+    @Override
+    public InputPacket getInput () {
+        // waiting for input
+        while (wsp==null) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        // delay output a bit to make them less scary
+        WorldStatePacket wsp = this.wsp;
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+        Point self = new Point(wsp.player.x,wsp.player.y);
+        
+        // identify an enemy in sight
+        PartialCharacterData enemy = null;
+        for (PartialCharacterData c:wsp.characters) {
+            if (c.team!=team) {
+                enemy = c;
+                break;
+            }
+        }
+        
+        // if there is an enemy
+        if (enemy!=null) {
+            pointCursorAt(enemy.x,enemy.y);
+            if (wsp.player.reloadPercent>=1) {
+                state = AIState.ATTACKING;
+                input.fire1 = true;
+            }
+            else if (state!=AIState.RETREATING) {
+                // RETREAT
+                state = AIState.RETREATING;
+                double enemyDirection = Math.atan2(self.y-enemy.y,enemy.x-self.x);
+                setNewIntr(self,randomIntr(self.x,self.y,enemyDirection+Math.PI,RETREAT_DISTANCE));
+            }
+        } else { // no enemy in sight
+            input.fire1 = false;
+            Point newIntr = null;
+            float min = Float.MAX_VALUE;
+            // else, explore locations of interests (only gun shots atm)
+            for (GameEvent event:wsp.events) {
+                // listen for gun shots
+                if (event instanceof GunShotEvent) {
+                    GunShotEvent e = (GunShotEvent) event;
+                    float eventDist =Geometry.diagonalDistance(e.x,e.y,self.x,self.y);
+                    // if this one is closer than last one
+                    if (eventDist<min) {
+                        // take this one instead
+                        newIntr = new Point (e.x,e.y);
+                        min = eventDist;
+                    }
+                }
+            }
+            
+            if (newIntr!=null) {
+                if (state==AIState.EXPLORING_POINT) {
+                    float newDist = Geometry.diagonalDistance(newIntr,self);
+                    float curDist = Geometry.diagonalDistance(curIntr,self);
+                    if (newDist<curDist) {
+                        setNewIntr(self,newIntr);
+                    }
+                } else {
+                    setNewIntr(self,newIntr);
+                    state = AIState.EXPLORING_POINT;
+                }
+            }
+            
+            if (curIntr==null ||
+                    Geometry.diagonalDistance(curIntr,self)<PATH_THRESHOLD) {
+                // generate randomly
+                state = AIState.EXPLORING_RANDOMLY;
+                setNewIntr(self,randomIntr(self.x,self.y,Math.PI*2*Utils.random().nextDouble(),EXPLORE_DISTANCE));
+            }
+        }
+        
+        // if was waiting for a path before and a path appeared
+        // take it
+        if (nextPath.path!=null) {
+            curPath = nextPath.path;
+            nextPath.path = null;
+        }
+        
+        
+        
+        if (curPath!=null && !curPath.isEmpty()) {
+            float distToCheckPoint = Geometry.diagonalDistance(self,curPath.get(0));
+            
+            // in case of death
+            if (distToCheckPoint>OUTOFRANGE_THRESHOLD) {
+                state = AIState.EXPLORING_RANDOMLY;
+                setNewIntr(self,randomIntr(self.x,self.y,Math.PI*2*Utils.random().nextDouble(),EXPLORE_DISTANCE));
+            }
+            else {
+                // if alr close to one checkpoint, move on
+                if (distToCheckPoint<PATH_THRESHOLD) {
+                    System.out.println("AI "+id+" arrived at "+curPath.get(0));
+                    curPath.remove(0);
+                }
+                
+                // follow the next
+                if (!curPath.isEmpty()) {
+                    moveToward(self,curPath.get(0));
+                    if (state!=AIState.RETREATING && state!=AIState.ATTACKING) {
+                        pointCursorAt(curPath.get(0));
+                    }
+                }
+            }
+        }
+        wsp = null;
+        return input;
+    }
+    
+    private Point randomIntr(int x, int y, double direction,double distance) {
+        double newX = x+distance*Math.cos(direction);
+        double newY = y-distance*Math.sin(direction);
+        int tileX = (int) (newX/Tile.tileSize);
+        int tileY = (int) (newY/Tile.tileSize);
+        if (tileX<0) tileX = Math.abs(tileX);
+        else if (tileX>arena.getWidth()) tileX = arena.getWidth()*2-tileX;
+        if (tileY<0) tileY = Math.abs(tileY);
+        else if (tileY>arena.getHeight()) tileY = arena.getHeight()*2-tileY;
+        
+        int n = 1;
+        while (!arena.get(tileX, tileY).walkable) {
+            tileX += Utils.random().nextInt(n*2+1)-n;
+            tileY += Utils.random().nextInt(n*2+1)-n;
+            n++;
+        }
+        return Utils.tileToPixel(new Point(tileX,tileY));
+    }
+    
+    private void setNewIntr(Point self, Point newIntr) {
+        curIntr = newIntr;
+        nextPath = pathFinder.findPath(self,newIntr);
+        System.out.println("Set new interest at "+newIntr);
+        //world.getEventListener().onEventReceived(new GunShotEvent(newIntr.x,newIntr.y,0,0));
+    }
+    
+    /**
+     * Moves the AI Player from one point to another
+     * @param self The point where the AI Player starts
+     * @param dest The destination where the AI Player is going to
+     */
+    private void moveToward(Point self, Point dest) {
+        if (self.x+COORD_THRESHOLD<dest.x) {
+            input.right = true;
+        } else
+            input.right = false;
+        if (self.x-COORD_THRESHOLD>dest.x) {
+            input.left = true;
+            
+        } else
+            input.left = false;
+        if (self.y+COORD_THRESHOLD<dest.y) {
+            input.down = true;
+        } else
+            input.down = false;
+        if (self.y-COORD_THRESHOLD>dest.y) {
+            input.top = true;
+        } else
+            input.top = false;
+    }
+    
+    private void pointCursorAt(Point p) {
+        pointCursorAt(p.x,p.y);
+    }
+    
+    private void pointCursorAt(int x, int y) {
+        input.cx = x;
+        input.cy = y;
+    }
+}

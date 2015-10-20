@@ -1,0 +1,10 @@
+Mansion
+8
+ffffff yellowgrass.png yellowgrass_dark.png true true
+c0dcc0 graybrick.png graybrick_dark.png true true
+e0e080 yellowbrick.png yellowbrick_dark.png true true
+800000 sewerwater.png sewerwater_dark.png true true
+808080 wall.png wall_dark.png false false
+008000 grasswall.png grasswall_dark.png false false
+c0c0c0 whitewall.png whitewall_dark.png false false
+ffff00 glasswindow.png glasswindow_dark.png false true

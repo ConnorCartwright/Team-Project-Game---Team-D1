@@ -1,0 +1,82 @@
+package gui;
+
+import java.awt.Component;
+import java.util.List;
+/**
+ * Utilities class.
+ * 
+ * @author Anh Pham
+ *
+ */
+public class Utils {
+<<<<<<< .mine
+	private static Random randomizer = new Random();
+	/**
+	 * Set the location of the child to the center of the parent
+	 * 
+	 * @param child the child component
+	 * @param parent the parent component
+	 */
+=======
+>>>>>>> .r119
+	public static void setLocationCenterOf(Component child, Component parent) {
+		int x = parent.getX() + (parent.getWidth() - child.getWidth()) / 2;
+		int y = parent.getY() + (parent.getHeight() - child.getHeight()) / 2;
+		child.setLocation(x, y);
+	}
+
+<<<<<<< .mine
+	/**
+	 * Tile to pixel
+	 * @param tileCoord the coordinate of the tile
+	 * @return returns the point value
+	 */
+	public static Point tileToPixel(Point tileCoord) {
+	    return new Point(tileCoord.x*Tile.tileSize+Tile.tileSize/2,
+	            tileCoord.y*Tile.tileSize+Tile.tileSize/2);
+	}
+	/**
+	 * Random
+	 * @return a random
+	 */
+	public static Random random() {
+		return randomizer;
+	}
+	
+	/**
+	 * Get volume at a distance
+	 * 
+	 * @param originalSound the original sound
+	 * @param distance the distance from the sound
+	 * @return the edited sound taking into account the distance
+	 */
+	public static float getVolumeAtDistance(float originalSound, double distance) {
+	    // don't increase the volume pass the original noise volume
+	    // which is based on one-tile distance
+	    distance = Math.max(Tile.tileSize,distance);
+	    
+	    // in real life it's 20*Math.log10 ... , but because we can't simulate
+	    // volume loss when a sound goes through walls, we have to artificially
+	    // increase the volume loss over distance to make up for it
+	    return (float) (originalSound+30*Math.log10(Tile.tileSize/distance));
+	}
+
+	/**
+	 * Find a player in a list given a specified ID.
+	 * 
+	 * @param players the list of players
+	 * @param id the id of a specific plaer
+	 * 
+	 * @return the clientplayer who's ID matches the ID passed
+	 */
+    public static ClientPlayer findPlayer(List<ClientPlayer> players, int id) {
+=======
+	public static ClientPlayer findPlayer(List<ClientPlayer> players, int id) {
+>>>>>>> .r119
+        for (ClientPlayer player:players) {
+            if (player.id == id)
+                return player;
+        }
+        return null;
+    }
+}

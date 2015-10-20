@@ -1,0 +1,18 @@
+package screen;
+
+import java.awt.Component;
+import java.util.Random;
+
+public class Utils {
+	private static Random randomizer = new Random();
+
+	public static void setLocationCenterOf(Component child, Component parent) {
+		int x = parent.getX() + (parent.getWidth() - child.getWidth()) / 2;
+		int y = parent.getY() + (parent.getHeight() - child.getHeight()) / 2;
+		child.setLocation(x, y);
+	}
+
+	public static Random random() {
+		return randomizer;
+	}
+}

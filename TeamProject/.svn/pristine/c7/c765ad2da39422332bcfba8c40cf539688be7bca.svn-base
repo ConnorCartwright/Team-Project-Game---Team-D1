@@ -1,0 +1,29 @@
+package screen;
+
+import java.util.List;
+
+import javax.swing.AbstractListModel;
+
+import screen.ClientPlayer;
+
+public class TeamListModel extends AbstractListModel<ClientPlayer> {
+	private List<ClientPlayer> team;
+
+	public TeamListModel(List<ClientPlayer> team) {
+		this.team = team;
+	}
+
+	@Override
+	public ClientPlayer getElementAt(int index) {
+		return team.get(index);
+	}
+
+	@Override
+	public int getSize() {
+		return team.size();
+	}
+
+	public void invalidate() {
+		this.fireContentsChanged(this, 0, getSize());
+	}
+}

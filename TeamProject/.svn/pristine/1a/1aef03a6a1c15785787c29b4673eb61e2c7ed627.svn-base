@@ -1,0 +1,168 @@
+package game;
+
+import gui.AbstractScreen;
+import gui.SplashScreen;
+
+import java.awt.Dimension;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Toolkit;
+
+import javax.swing.JFrame;
+
+import character.CharacterFactory;
+
+/**
+ * Runs the game loop
+ */
+public class Game extends JFrame implements Runnable {
+	/**
+     * 
+     */
+	private static final long serialVersionUID = 5913371417037613515L;
+
+	private AbstractScreen screen;
+	private int width;
+	private int height;
+	// private int scale;
+	public static int FPS = 60;
+	public static int MS_PER_UPDATE = 1000 / FPS;
+	private double averageFPS = 0;
+
+	public Game() {
+		GraphicsDevice screen = GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()[0];
+		setIgnoreRepaint(true);
+		CharacterFactory.initImage();
+		// Should change to load from save file
+		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+		width =  (int) screenSize.getWidth();
+		height = (int) screenSize.getHeight();
+
+		setTitle("Deadlock");
+		setIgnoreRepaint(true);
+		setResizable(false);
+		setDefaultCloseOperation(EXIT_ON_CLOSE);
+
+		if (screen.isFullScreenSupported()) {
+			setUndecorated(true);
+			screen.setFullScreenWindow(this);
+		}
+
+		pack();
+		setVisible(true);
+		setLocationRelativeTo(null);
+
+		init();
+		start();
+	}
+
+	@Override
+	public Dimension getPreferredSize() {
+		return new Dimension(width, height);
+	}
+
+	/**
+	 * Initialize the game, only called after added to a frame.
+	 */
+	public void init() {
+		setScreen(new SplashScreen(this));
+	}
+
+	/**
+	 * Start the game loop.
+	 */
+	public void start() {
+		new Thread(this).run();
+	}
+
+	/**
+	 * The game loop.
+	 */
+	@Override
+	public void run() {
+		long previous = System.currentTimeMillis();
+		double lag = 0.0;
+		long totalTime = 0;
+		int frameCount = 0;
+		final int MAX_FRAME_COUNT = 50;
+
+		while (true) {
+			long current = System.currentTimeMillis();
+			long elapsed = current - previous;
+			previous = current;
+			lag += elapsed;
+
+			while (lag >= MS_PER_UPDATE) {
+				screen.update();
+				lag -= MS_PER_UPDATE;
+			}
+			screen.repaint();
+
+			/*
+			 * // Render single frame do { // The following loop ensures that
+			 * the contents of the drawing buffer // are consistent in case the
+			 * underlying surface was recreated do { // Get a new graphics
+			 * context every time through the loop // to make sure the strategy
+			 * is validated
+			 * 
+			 * // Render to graphics gui.repaint();
+			 * 
+			 * Graphics graphics = strategy.getDrawGraphics(); // Render FPS
+			 * count graphics.setColor(Color.WHITE);
+			 * graphics.drawString(averageFPS+"",50,50); // Dispose the graphics
+			 * graphics.dispose();
+			 * 
+			 * // Repeat the rendering if the drawing buffer contents // were
+			 * restored } while (strategy.contentsRestored());
+			 * 
+			 * // Display the buffer strategy.show();
+			 * 
+			 * // Repeat the rendering if the drawing buffer was lost } while
+			 * (strategy.contentsLost());
+			 */
+
+			long waitTime = MS_PER_UPDATE - (System.currentTimeMillis() - current);
+			try {
+				Thread.sleep(waitTime);
+			} catch (Exception e) {
+			}
+
+			totalTime += System.currentTimeMillis() - current;
+
+			frameCount++;
+			if (frameCount == MAX_FRAME_COUNT) {
+				averageFPS = (1000.0 * frameCount) / totalTime;
+				frameCount = 0;
+				totalTime = 0;
+			}
+		}
+	}
+
+	/**
+	 * The screens should use this method to change between screens. NOTE: The
+	 * screens should handle disposing/saving themselves before changing to
+	 * another gui.
+	 */
+	public void setScreen(AbstractScreen abstractScreen) {
+		if (abstractScreen == null) {
+			throw new IllegalArgumentException("AbstractScreen must not be null");
+		}
+		this.setContentPane(abstractScreen);
+		this.screen = abstractScreen;
+		abstractScreen.requestFocus();
+	}
+
+	public AbstractScreen getCurrentScreen() {
+		return screen;
+	}
+
+	@Override
+	public int getWidth() {
+		return width;
+	}
+
+	@Override
+	public int getHeight() {
+		return height;
+	}
+}

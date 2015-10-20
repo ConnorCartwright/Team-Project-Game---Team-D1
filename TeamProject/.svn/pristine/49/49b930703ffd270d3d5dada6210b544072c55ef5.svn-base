@@ -1,0 +1,14 @@
+package network;
+
+import java.io.Serializable;
+
+public class FullCharacterData implements Serializable {
+	public int x = 0, y = 0;
+	public int radius;
+
+	public double healthPoints;
+	public float reloadPercent;
+	public int viewRange;
+	public int viewAngle;
+	public double direction;
+}

@@ -1,0 +1,212 @@
+package character;
+import network.FullCharacterData;
+import core.World;
+import weapon.*;
+
+/**
+ * The <code>ControlledCharacter</code> class defines the behaviour that all types of Characters must inherit.
+ * Here the Accessor and Mutator methods are located for ease of access elsewhere in the code and to 
+ * avoid code duplication. The ControlledCharacter class encompasses how ALL Characters have to behave.
+ * 
+ * A <code>ControlledCharacter</code> also uses a specific set of <code>Weapons</code>.
+ * 
+ * @see Weapon
+ * @author Team D1
+ * @author Connor Cartwright
+ *
+ */
+public abstract class ControlledCharacter extends AbstractCharacter {    
+	public final int id; // the player's ID
+	
+	public final int team; // the team the player is on
+	
+	private int typeID; // the type of the character, e.g. Sniper
+	
+	private int cx = 0; // x position of the crosshairs
+	private int cy = 0; // y position of the crosshairs
+	
+	private boolean firing = false; // whether or not the character is firing
+	private long lastFire; // how long was it since the character last fired
+	
+	// The initial fields below is the result of providing parameters by subclassing
+	// (compared to using Type Object pattern) - there's no easy way to access,
+	// say, Scout's max HP (although it is already defined there)
+	// even from inside the ControlledCharacter class. With type object, we can type.getHP().
+	// With subclassing, we can't getLowestLevelClass().MAXHP. So now we have two options:
+	//
+	// + (used below) to save every single initial stat in ControlledCharacter objects instead
+	//   (an already big class) although all scouts will have the same initial stats anyway,
+	//   i.e duplicated fields in all objects. The initial fields also grow along with 
+	//   each field added later.
+	//
+	// + to have abstract accessors to initial fields in ControlledCharacter that
+	//   EVERY subclass has to implement, and then call character.getMaxHealth()
+	//   to achieve polymorphism (duplicated code in all the subclasses).
+	// 
+	// Both solutions make the codebase look poorly written and maintaining & extending
+	// devilishly hard, over the gain of a nice-looking character type hierarchy.
+	//
+	// This could be solved easily by either ditching the character inheritance hierarchy completely
+	// and providing a data table (rows = types, columns = fields) to look up when creating
+	// a new character with a numerical "typeID", hence to access default fields we just need
+	// table[typeID][FIELD]; or storing a Type Object as a field inside ControlledCharacter,
+	// hence to access default fields we just need type.getInitHP().
+	//
+	// Data table & Type Object, both solutions are widely used to provide persistent data
+	// (things that don't change) in games.
+	
+	//private final double initialStamina;
+	//private final int initialRadius;
+	//private final double initialSpeed;
+	//private final int initialViewRange;
+	//private final int initialViewAngle;
+
+	private double stamina; // the stamina amount of the character class
+	
+	private PrimaryWeapon primary; // the primary weapon of the character class
+	private SecondaryWeapon secondary; // the secondary weapon of the character class
+	
+	
+	protected ControlledCharacter(int id, int typeID, int team, double healthPoints, double stamina, double speed, double noise, int viewRange,
+							int viewAngle, int radius, PrimaryWeapon primary, SecondaryWeapon secondary) {
+	    super(healthPoints,speed,radius,noise,viewRange,viewAngle);
+		this.id = id;
+		this.typeID = typeID;
+		this.team = team;
+		
+		//this.initialStamina = stamina;
+		//this.initialRadius = radius;
+		//this.initialSpeed = speed;
+		//this.initialViewAngle = viewAngle;
+		//this.initialViewRange = viewRange;
+		
+		this.stamina = stamina;
+		this.primary = primary;
+		this.secondary = secondary;
+	}
+	
+	protected ControlledCharacter(int id, int typeID, int team, double healthPoints, double stamina, double speed, int viewRange,
+            int viewAngle, int radius, PrimaryWeapon primary, SecondaryWeapon secondary) {
+	    this(id, typeID, team, healthPoints, stamina, speed,DEFAULT_NOISE, viewRange, viewAngle, radius, primary, secondary);
+	}
+	
+	public void update(World world) {
+		// update position
+		// apply collision detection on movement
+
+		super.updateCoordinate(world);
+		super.updateNoise(world);
+		// fire
+		if (firing) {
+			fire(world);
+		}
+	}
+
+	private void fire(World world) {
+		long elapsed = System.currentTimeMillis() - lastFire;
+
+		if (elapsed > primary.getReloadTime()) {
+			((Weapon) primary).fire(world, this,getDirection());
+			lastFire = System.currentTimeMillis();
+		}
+
+		firing = false;
+	}
+
+	public boolean isFiring() {
+		return firing;
+	}
+
+	public void updateCursor(int cx, int cy) {
+		this.cx = cx;
+		this.cy = cy;
+		// update direction
+		setDirection(Math.atan2(getY() - cy, cx - getX()));
+	}
+
+	public double getStamina() {
+		return stamina;
+	}
+
+	public PrimaryWeapon getPrimary() {
+		return primary;
+	}
+	
+	public SecondaryWeapon getSecondary() {
+		return secondary;
+	}
+
+	public int getTypeID() {
+		return typeID;
+	}
+	
+	public void setStamina(int stamina) {
+		this.stamina = stamina;	
+	}
+
+
+	public void processInput(network.GameDataPackets.InputPacket input) {
+		if (input.fire1) {
+			firing = true;
+		}
+		double dx = getDx();
+		double dy = getDy();
+		double speed = getSpeed();
+		if (input.down) {
+			if (!input.top) {
+				dy = speed;
+			} else {
+				dy = 0;
+			}
+		} else if (input.top) {
+			dy = -speed;
+		} else {
+			dy = 0;
+		}
+
+		if (input.right) {
+			if (!input.left) {
+				dx = speed;
+			} else {
+				dx = 0;
+			}
+		} else if (input.left) {
+			dx = -speed;
+		} else {
+			dx = 0;
+		}
+
+		if (dx!=0 && dy!=0) {
+		    dx /= 1.4;
+		    dy /= 1.4;
+		}
+		
+		if (input.sneaking) {
+			dx *= 0.5;
+			dy *= 0.5;
+		} else if (input.running) {
+		    dx *= 1.5;
+		    dy *= 1.5;
+		}
+		setDx(dx);
+		setDy(dy);
+		updateCursor(input.cx, input.cy);
+	}
+
+	public FullCharacterData generate() {
+		FullCharacterData fc = new FullCharacterData();
+		fc.healthPoints =  (float) getHealthPoints();
+		fc.radius = (byte) getRadius();
+		long elapsed = System.currentTimeMillis() - lastFire;
+		if (elapsed>primary.getReloadTime())
+		    fc.reloadPercent = 1;
+		else
+		    fc.reloadPercent = (float) (elapsed / primary.getReloadTime());
+		fc.direction = (float) getDirection();
+		fc.viewAngle = (short) getViewAngle();
+		fc.viewRange = (short) getViewRange();
+		fc.x = (short) getIntX();
+		fc.y = (short) getIntY();
+		return fc;
+	}
+}

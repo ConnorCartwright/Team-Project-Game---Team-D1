@@ -1,0 +1,173 @@
+package test;
+
+import static org.junit.Assert.*;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import physics.Projectile;
+import character.*;
+import character.Character;
+import weapon.*;
+
+/**
+ * Unit testing for Projectile class.
+ * 
+ * @author Madyan Al-Jazaeri
+ */
+public class ProjectileTest {
+
+	Character source;
+	Weapon weapon;
+	Projectile projectile;
+	
+	/**
+	 * @throws java.lang.Exception
+	 */
+	@Before
+	public void setUp() throws Exception {
+		source = new Sniper(0,0);
+		weapon = new Pistol();
+		projectile = new Projectile(source, weapon.getDamage(), 50, weapon.getProjectileSpeed(), weapon.getRange());
+	}
+
+	/**
+	 * Test method for {@link physics.Projectile#Projectile(player.Character, double, double, double, double)}.
+	 */
+	@Test
+	public void testProjectile() {
+		int expected = (int) source.getX();
+		int actual = (int) projectile.getX();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual);
+		
+		expected = (int) source.getY();
+		actual = (int) projectile.getY();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual);
+		
+		double expectedD = 28.9489808547634;
+		double actualD = projectile.getDx();
+		assertEquals("Expected " + expectedD + " instead of " + actualD, expectedD, actualD, 0.000000000000001);
+		
+		expectedD = 7.871245611117863;
+		actualD = projectile.getDy();
+		assertEquals("Expected " + expectedD + " instead of " + actualD, expectedD, actualD, 0.000000000000001);
+	}
+
+	/**
+	 * Test method for {@link physics.Projectile#getDamage()}.
+	 */
+	@Test
+	public void testGetDamage() {
+		double expected = weapon.getDamage();
+		double actual = projectile.getDamage();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual, 0.000000000000001);
+	}
+
+	/**
+	 * Test method for {@link physics.Projectile#getX()}.
+	 */
+	@Test
+	public void testGetX() {
+		int expected = (int) source.getX();
+		int actual = (int) projectile.getX();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual);
+	}
+
+	/**
+	 * Test method for {@link physics.Projectile#getY()}.
+	 */
+	@Test
+	public void testGetY() {
+		int expected = (int) source.getY();
+		int actual = (int) projectile.getY();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual);
+	}
+
+	/**
+	 * Test method for {@link physics.Projectile#getDx()}.
+	 */
+	@Test
+	public void testGetDx() {
+		double expectedD = 28.9489808547634;
+		double actualD = projectile.getDx();
+		assertEquals("Expected " + expectedD + " instead of " + actualD, expectedD, actualD, 0.000000000000001);
+	}
+
+	/**
+	 * Test method for {@link physics.Projectile#getDy()}.
+	 */
+	@Test
+	public void testGetDy() {
+		double expectedD = 7.871245611117863;
+		double actualD = projectile.getDy();
+		assertEquals("Expected " + expectedD + " instead of " + actualD, expectedD, actualD, 0.000000000000001);
+	}
+
+	/**
+	 * Test method when updating an in range projectile for {@link physics.Projectile#update()}.
+	 */
+	@Test
+	public void testUpdateInRange() {
+		double x = projectile.getX() + projectile.getDx();
+		double y = projectile.getY() + projectile.getDy();
+		
+		projectile.update();
+		
+		double expected = x;
+		double actual = projectile.getX();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual, 0.000000000000001);
+		
+		expected = y;
+		actual = projectile.getY();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual, 0.000000000000001);
+	}
+
+	
+	/**
+	 * Test method when updating an out of range projectile for {@link physics.Projectile#update()}.
+	 */
+	@Test
+	public void testUpdateOutOfRange() {
+		for (int i = 0; i < 50; i++) {
+			projectile.update();
+		}
+	
+		double x = projectile.getX();
+		double y = projectile.getY();
+		
+		projectile.update();
+	
+		double expected = x;
+		double actual = projectile.getX();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual, 0.000000000000001);
+		
+		expected = y;
+		actual = projectile.getY();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual, 0.000000000000001);
+	}
+	
+	/**
+	 * Test when result of {@link physics.Projectile#isOutOfRange()} method is false.
+	 */
+	@Test
+	public void testIsOutOfRangeFalse() {
+		boolean expected = false;
+		boolean actual = projectile.isOutOfRange();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual);
+	}
+	
+	/**
+	 * Test when result of {@link physics.Projectile#isOutOfRange()} method is true.
+	 */
+	@Test
+	public void testIsOutOfRangeTrue() {
+		for (int i = 0; i < 50; i++) {
+			projectile.update();
+		}
+		
+		boolean expected = true;
+		boolean actual = projectile.isOutOfRange();
+		assertEquals("Expected " + expected + " instead of " + actual, expected, actual);
+	}
+
+}

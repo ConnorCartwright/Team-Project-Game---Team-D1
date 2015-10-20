@@ -1,0 +1,215 @@
+package physics;
+
+import geometry.Geometry;
+
+import java.awt.Point;
+import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
+import character.Character;
+import screen.Utils;
+import server.PartialCharacterData;
+import server.ProjectileData;
+import server.GameDataPackets.WorldStatePacket;
+import server.GameEvent;
+import server.GameEvent.*;
+import sound.AudioManager;
+
+/**
+ * The physical world inside a match, which handles collision/everything.
+ */
+public class World {
+	Arena arena;
+	List<Character> characters;
+	List<Projectile> projectiles;
+	GameEventListener listener;
+
+	// List<Effect> effects;
+
+	/**
+	 * Creates the World which is used in GameScreen to play the actual game
+	 * @param arena The arena used in the game
+	 * @param listener
+	 */
+	public World(Arena arena,GameEventListener listener) {
+		this.arena = arena;
+		this.listener = listener;
+		characters = new ArrayList<Character>();
+		projectiles = new LinkedList<Projectile>();
+	}
+	
+	/**
+	 * Adds a player to the World
+	 * @param p the player to be added
+	 */
+	public void addPlayer(Character p) {
+	    Point spawn = randomizeSpawnPoint(p.team);
+		p.setX(spawn.x * Tile.tileSize);
+		p.setY(spawn.y * Tile.tileSize);
+		characters.add(p);
+	}
+
+	public GameEventListener getEventListener() {
+	    return listener;
+	}
+	
+	/**
+	 * Randomize the spawn points of a given team
+	 * @param team the team id of the team that wishes its spawn points randomized
+	 * @return
+	 */
+	private Point randomizeSpawnPoint(int team) {
+	    int spawnIndex = Utils.random().nextInt(arena.getSpawn(team).size());
+        return arena.getSpawn(team).get(spawnIndex);
+	}
+	
+	/**
+	 * Add a projectile to the world
+	 * @param p the projectile to be added
+	 */
+	public void addProjectile(Projectile p) {
+		projectiles.add(p);
+	}
+
+	/**
+	 * Update the world, and all the characters and projectiles in the world. This happens every frame. 
+	 */
+	public void update() {
+	    // update characters
+        for (Character p : characters) {
+            p.update(this);
+        }
+        
+        // update projectiles
+        List<Projectile> outOfRange = new LinkedList<Projectile>();
+        for (Projectile p : projectiles) {
+            double newX=p.getX()+p.getDx(),newY=p.getY()+p.getDy();
+            List<Point2D> samples = Geometry.getLineSamples(p.getX(),p.getY(),newX,newY);
+            boolean consumed = false;
+            
+            for (Point2D pt:samples) {
+                // check projectile vs character
+                for (Character ch:characters) {
+                    // HIT
+                    if (ch.id!=p.id && pt.distance(ch.getX(),ch.getY())<ch.getRadius()) {
+                        // decrease character's hp
+                        listener.onEventReceived(new BulletHitPlayerEvent((int)pt.getX(),(int)pt.getY()));
+                        ch.setHealthPoints(ch.getHealthPoints()-p.getDamage());
+                        
+                        // KILL
+                        if (ch.getHealthPoints()<=0) {
+                            listener.onEventReceived(new PlayerDieEvent(p.id,ch.id));
+                            Point spawn = randomizeSpawnPoint(ch.team);
+                            ch.setX(spawn.x * Tile.tileSize);
+                            ch.setY(spawn.y * Tile.tileSize);
+                            ch.resetStats();
+                        }
+                        // consume the projectile
+                        consumed = true;
+                        break;
+                    }
+                }
+                
+                // if alr hit character, done
+                if (consumed)
+                    break;
+                
+                // check projectile vs wall collision
+                int tileX = (int) (pt.getX() / Tile.tileSize);
+                int tileY = (int) (pt.getY() / Tile.tileSize);
+               
+                if (!arena.get(tileX, tileY).isWalkable()) {
+                    listener.onEventReceived(new BulletHitWallEvent((int)pt.getX(),(int)pt.getY()));
+                    consumed = true;
+                    break;
+                }
+            }
+            if (consumed || p.isOutOfRange())
+                outOfRange.add(p);
+            else
+                p.update();
+        }
+        projectiles.removeAll(outOfRange);
+	}
+	
+	/**
+	 * Returns the arena used by the world
+	 * @return the arena used by the world
+	 */
+	public Arena getArena() {
+		return arena;
+	}
+
+	public WorldStatePacket generateState() {
+		WorldStatePacket wsp = new WorldStatePacket();
+
+		wsp.characters = new LinkedList<PartialCharacterData>();
+		// TODO only add objects of interest into the packet
+		for (int i = 0; i < characters.size(); i++) {
+			PartialCharacterData character = new PartialCharacterData();
+			character.id = characters.get(i).id;
+			character.x = characters.get(i).getIntX();
+			character.y = characters.get(i).getIntY();
+			character.hp = (float) characters.get(i).getHealthPoints();
+			character.r = characters.get(i).getRadius();
+			wsp.characters.add(character);
+		}
+
+		wsp.projectiles = new LinkedList<ProjectileData>();
+		for (int i = 0; i < projectiles.size(); i++) {
+			ProjectileData projectile = new ProjectileData();
+			projectile.x = (int) projectiles.get(i).getX();
+			projectile.y = (int) projectiles.get(i).getY();
+			projectile.dx = (int) projectiles.get(i).getDx();
+			projectile.dy = (int) projectiles.get(i).getDy();
+			wsp.projectiles.add(projectile);
+		}
+
+		return wsp;
+	}
+	
+	public static WorldStatePacket filter(WorldStatePacket globalState, Character ch) {
+		WorldStatePacket localState = new WorldStatePacket();
+		localState.characters = new LinkedList<PartialCharacterData>();
+		for (PartialCharacterData c:globalState.characters) {
+			if (Point.distance(ch.getX(),ch.getY(),c.x,c.y)<ch.getViewRange()+10)
+				localState.characters.add(c);
+		}
+		localState.projectiles = new LinkedList<ProjectileData>();
+		for (ProjectileData p:globalState.projectiles) {
+			if (Point.distance(ch.getX(),ch.getY(),p.x,p.y)<ch.getViewRange()+10)
+				localState.projectiles.add(p);
+		}
+		localState.events = new LinkedList<GameEvent>();
+		for (GameEvent event:globalState.events) {
+			if (event instanceof BulletHitWallEvent) {
+                BulletHitWallEvent e = (BulletHitWallEvent) event;
+                double distance = Point.distance(e.x,e.y,ch.getX(),ch.getY());
+                float volume = Utils.getVolumeAtDistance(AudioManager.BULLETWALLNOISE,distance);
+                if (distance<ch.getViewRange() || volume>=0)
+                	localState.events.add(e);
+            } else if (event instanceof BulletHitPlayerEvent) {
+                BulletHitPlayerEvent e = (BulletHitPlayerEvent) event;
+                double distance = Point.distance(e.x,e.y,ch.getX(),ch.getY());
+                float volume = Utils.getVolumeAtDistance(AudioManager.BULLETHITNOISE,distance);
+                if (distance<ch.getViewRange() || volume>=0)
+                	localState.events.add(e);
+            } else if (event instanceof FootStepEvent) {
+                FootStepEvent e = (FootStepEvent) event;
+                float volume = Utils.getVolumeAtDistance(e.noise,Point.distance(e.x,e.y,ch.getX(),ch.getY()));
+                if (volume>=0) {
+                	localState.events.add(e);
+                }
+            } else {
+            	localState.events.add(event);
+            }
+		}
+		localState.time = globalState.time;
+		localState.player = ch.generate();
+		return localState;
+	}
+		
+	
+}

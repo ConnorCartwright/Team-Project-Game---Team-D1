@@ -1,0 +1,56 @@
+package physics;
+
+import graphics.ImageBlender;
+
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+
+public class Tile {
+	public static int tileSize = 32; // default
+
+	final boolean walkable;
+	final boolean transparent;
+	final private BufferedImage tileImage;
+	final private BufferedImage tileImageDark;
+	final private BufferedImage tileImageLight;
+
+	public Tile(boolean walkable, boolean transparent, BufferedImage tileImage) {
+		this.walkable = walkable;
+		this.transparent = transparent;
+		this.tileImage = ImageBlender.darkenImage(tileImage,1.2f,2);
+		if (transparent)
+		    this.tileImageDark = ImageBlender.blurImage(ImageBlender.darkenImage(tileImage,6,3));
+		else
+		    this.tileImageDark = ImageBlender.darkenImage(tileImage,6,3);
+		    
+		this.tileImageLight = ImageBlender.darkenImage(tileImage, 1f,2);
+	}
+	
+	public Tile(boolean walkable, boolean transparent) {
+        this.walkable = walkable;
+        this.transparent = transparent;
+        this.tileImage = null;
+        this.tileImageDark = null;
+        this.tileImageLight = null;
+    }
+	
+	public boolean isWalkable() {
+		return walkable;
+	}
+	
+	public boolean isTransparent() {
+		return transparent;
+	}
+
+	public Image getImage() {
+		return tileImage;
+	}
+
+	public Image getImageDark() {
+		return tileImageDark;
+	}
+	
+	public Image getImageLight() {
+        return tileImageLight;
+    }
+}

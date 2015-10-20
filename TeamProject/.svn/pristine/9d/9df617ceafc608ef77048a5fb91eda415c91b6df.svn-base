@@ -1,0 +1,52 @@
+//package player;
+//
+//public class CharacterType {
+//	public static final CharacterType SCOUT = new CharacterType(90, 100, 2, 350, 100, 10, Weapon.PISTOL);
+//
+//	private final float healthPoints;
+//	private final float stamina;
+//	private final float movementSpeed;
+//	private final int viewRange;
+//	private final int viewAngle;
+//	private final int characterRadius; // was before just called 'radius'
+//	private final Weapon weapon;
+//
+//	public CharacterType(float healthPoints, float stamina, float movementSpeed,
+//			int viewRange, int viewAngle, int characterRadius, Weapon weapon) {
+//		this.healthPoints = healthPoints;
+//		this.stamina = stamina;
+//		this.movementSpeed = movementSpeed;
+//		this.viewRange = viewRange;
+//		this.viewAngle = viewAngle;
+//		this.characterRadius = characterRadius;
+//		this.weapon = weapon;
+//	}
+//
+//	public float getHealthPoints() {
+//		return healthPoints;
+//	}
+//
+//	public float getStamina() {
+//		return stamina;
+//	}
+//
+//	public float getMovementSpeed() {
+//		return movementSpeed;
+//	}
+//
+//	public int getViewRange() {
+//		return viewRange;
+//	}
+//
+//	public int getViewAngle() {
+//		return viewAngle;
+//	}
+//
+//	public int getCharacterRadius() {
+//		return characterRadius;
+//	}
+//
+//	public Weapon getWeapon() {
+//		return weapon;
+//	}
+//}
